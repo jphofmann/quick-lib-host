@@ -1,0 +1,9 @@
+[submodule "lib-quickhost-inventory"]
+	path = lib-quickhost-inventory
+	url = git@repo.quickhost.org:/lib-quickhost-inventory.git
+[submodule "lib-q-inventory-repository-main"]
+	path = lib-q-inventory-repository-main
+	url = git@repo.quickhost.org:/lib-q-inventory-repository-main.git
+[submodule "lib-mothership"]
+	path = lib-mothership
+	url = git@repo.quickhost.org:/lib-mothership.git
