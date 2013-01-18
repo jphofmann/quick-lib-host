@@ -1,3 +1,9 @@
 InterfaceHost/bin/
 InterfaceHost/obj
 InterfaceHost/*.suo
+ConfusingWCF/ConfusingWCF.suo
+InterfaceHost/packages/ServiceStack.3.9.33/
+InterfaceHost/packages/ServiceStack.Common.3.9.33/
+InterfaceHost/packages/ServiceStack.Text.3.9.33/
+InterfaceHost/packages/ServiceStack.Redis.3.9.33/
+InterfaceHost/packages/ServiceStack.OrmLite.SqlServer.3.9.33
