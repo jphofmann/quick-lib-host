@@ -11,17 +11,17 @@ using System.ServiceModel.Channels;
 using System.Diagnostics;
 using System.Xml;
 using System.Xml.XPath;
+using OldQuick.Inventory;
 
 namespace InterfaceHost
 {
     public class Program
     {
-        static Assembly host_library = null;
-        static OldQuick.Inventory.IOldQuickInventoryRepository host_repo = null;
         static void Main(string[] args)
         {
-            string dll = "MAIN.DLL";
-            string service_name = "Main Inventory"; // read from dll.
+            DllLoader loader = new DllLoader(args[0]);
+            OldQuickInventoryRepositoryHostable h = loader.host.GetConstructor(new Type[] { }).Invoke(null) as OldQuickInventoryRepositoryHostable;
+            string service_name = h.GetName();
             ServiceStackHost ssh = new ServiceStackHost( service_name );
             ssh.Init();
             //ssh.Start("http://192.168.4.57:9000/");

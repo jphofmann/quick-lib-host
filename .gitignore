@@ -7,3 +7,12 @@ InterfaceHost/packages/ServiceStack.Common.3.9.33/
 InterfaceHost/packages/ServiceStack.Text.3.9.33/
 InterfaceHost/packages/ServiceStack.Redis.3.9.33/
 InterfaceHost/packages/ServiceStack.OrmLite.SqlServer.3.9.33
+MothershipClientExample/bin/
+MothershipClientExample/obj
+MothershipClientExample/packages/ServiceStack.3.9.33/lib/net35/ServiceStack.dll
+MothershipClientExample/packages/ServiceStack.3.9.33/lib/net35/ServiceStack.ServiceInterface.dll
+MothershipClientExample/packages/ServiceStack.3.9.33/lib/net35/ServiceStack.xml
+MothershipClientExample/packages/ServiceStack.Common.3.9.33/lib
+MothershipClientExample/packages/ServiceStack.Text.3.9.33/lib
+MothershipClientExample/packages/ServiceStack.OrmLite.SqlServer.3.9.33/lib/
+MothershipClientExample/packages/ServiceStack.Redis.3.9.33/lib
