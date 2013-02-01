@@ -25,7 +25,13 @@ namespace InterfaceHost
             ServiceStackHost ssh = new ServiceStackHost( service_name );
             ssh.Init();
             //ssh.Start("http://192.168.4.57:9000/");
+            
+            // You must register this url before you can host.
+            // Open an elevated command prompt and enter:
+            //  netsh http add urlacl url=http://+:8088/joinus user=YOUR_USER_NAME
             ssh.Start("http://+:8088/joinus/");
+
+
             Console.WriteLine("ServiceStack-based InterfaceHost v0.0.1, Serving " + service_name);
             Console.WriteLine("Press <enter> to terminate.");
             Console.ReadLine();
