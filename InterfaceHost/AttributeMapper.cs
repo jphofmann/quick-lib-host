@@ -96,7 +96,6 @@ namespace InterfaceHost
                     List<LocalBuilder> local_args = new List<LocalBuilder>();
 
 
-                    il_gen.Emit(OpCodes.Ldarg_1);
                     foreach( ParameterInfo param in mi.GetParameters())
                     {
                         PropertyInfo assignee = null;
@@ -110,6 +109,7 @@ namespace InterfaceHost
                             }
                         }
                         LocalBuilder loc_input = il_gen.DeclareLocal( param.ParameterType );
+                        il_gen.Emit(OpCodes.Ldarg_1);
                         il_gen.Emit(OpCodes.Call, assignee.GetGetMethod());
                         il_gen.Emit(OpCodes.Stloc, loc_input.LocalIndex);
 
@@ -119,15 +119,15 @@ namespace InterfaceHost
                         //il_gen.EmitWriteLine("Done");
                         local_args.Add(loc_input);
                     }
-                    il_gen.Emit(OpCodes.Pop);
+                    //il_gen.Emit(OpCodes.Pop);
                     il_gen.Emit(OpCodes.Ldstr, map_num.ToString());
                     il_gen.Emit(OpCodes.Call,mapping_func);
-                    //foreach (LocalBuilder loc in local_args)
-                    //    il_gen.Emit(OpCodes.Ldloc, loc.LocalIndex);
+                    foreach (LocalBuilder loc in local_args)
+                        il_gen.Emit(OpCodes.Ldloc, loc.LocalIndex);
 
                     //il_gen.EmitWriteLine("All Arugments Loaded");
                     //il_gen.Emit(OpCodes.Newobj,);
-                    //il_gen.Emit(OpCodes.Call, mi);
+                    il_gen.Emit(OpCodes.Call, mi);
 
                     //il_gen.Emit(OpCodes.Ldstr, "Moo");
                     il_gen.Emit(OpCodes.Ret);
@@ -160,11 +160,17 @@ namespace InterfaceHost
                     // test using "InventoryExists" from Main.
                     Object p = input.GetConstructor(new Type[] { }).Invoke(new object[] { });
                     PropertyInfo[] pis = input.GetProperties();
-                    input.GetProperty("id").GetSetMethod().Invoke( p, new object[] { 42 } );
-                    Object o = service.GetConstructor(new Type[] { }).Invoke(new object[] { });
-                    //service.InvokeMember("set_real", BindingFlags.Public | BindingFlags.SetProperty, null, o, new object[] { host_class });
-                    MethodInfo[] mis = service.GetMethods();
-                    object anyout = service.InvokeMember("Any", BindingFlags.Public | BindingFlags.Instance | BindingFlags.InvokeMethod, null, o, new object[] { p });
+                    PropertyInfo testprop = input.GetProperty("first");
+                    if (testprop != null)
+                    {
+                        testprop.GetSetMethod().Invoke(p, new object[] { "frank" });
+                        input.GetProperty("second").GetSetMethod().Invoke( p, new object[] { "oak" } );
+                        Object o = service.GetConstructor(new Type[] { }).Invoke(new object[] { });
+                        //service.InvokeMember("set_real", BindingFlags.Public | BindingFlags.SetProperty, null, o, new object[] { host_class });
+                        MethodInfo[] mis = service.GetMethods();
+                        object anyout = service.InvokeMember("Any", BindingFlags.Public | BindingFlags.Instance | BindingFlags.InvokeMethod, null, o, new object[] { p });
+                        //input.GetProperty("id").GetSetMethod().Invoke( p, new object[] { 42 } );
+                    }
 
                 }
                 mapped_types = type_list.ToArray();
