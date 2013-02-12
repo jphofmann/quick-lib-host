@@ -69,14 +69,14 @@ namespace InterfaceHost
 
                     foreach (ParameterInfo param in mi.GetParameters())
                     {
-                        Tuple<MethodBuilder,MethodBuilder> accessors = CreateProperty(inputbuilder, param.Name, param.ParameterType);
-                        accessors.Item1.SetCustomAttribute(dm_attr_builder);
-                        accessors.Item2.SetCustomAttribute(dm_attr_builder);
-                        //field.SetCustomAttribute(dm_attr_builder);
+                        CreateProperty(inputbuilder, param.Name, param.ParameterType, dm_attr_builder);
                     }
+                    Type input = inputbuilder.CreateType();
+                    Type output = outputbuilder.CreateType();
+                    Object input_object = input.GetConstructor(new Type[] { }).Invoke(new object[] { });
 
 
-                    MethodBuilder mth_builder = servicebuilder.DefineMethod("Any", MethodAttributes.Public, typeof(object), new Type[] { inputbuilder.CreateType() });
+                    MethodBuilder mth_builder = servicebuilder.DefineMethod("Any", MethodAttributes.Public, typeof(object), new Type[] {input });
                     //ConstructorInfo ss_attribute = 
                     CustomAttributeBuilder x;
                     //mth_builder.SetCustomAttribute();
@@ -90,29 +90,57 @@ namespace InterfaceHost
                     //LocalBuilder local_host = il_gen.DeclareLocal( typeof(host_class) );
                     //foreach( ParameterInfo method_param in mi.GetParameters())
                     //    il_gen.DeclareLocal( method_param.ParameterType )
+                    // class takes in the input type.
+                    il_gen.Emit( OpCodes.Ldarg_0 );
+                    LocalBuilder loc_arg = il_gen.DeclareLocal(input);
+                    il_gen.Emit(OpCodes.Stloc, loc_arg.LocalIndex);
 
-                    for (int i = 0; i < count; i++)
+                    il_gen.EmitWriteLine("Input is ");
+                    il_gen.Emit(OpCodes.Ldarg_1);
+                    il_gen.Emit(OpCodes.Call, input.GetMethod("ToString"));
+                    il_gen.Emit(OpCodes.Call, console_debug_out);
+                    il_gen.EmitWriteLine("Should have a simple InventoryExists Item");
+                    il_gen.Emit(OpCodes.Nop);
+                    il_gen.Emit(OpCodes.Ldarg_1);
+                    foreach( ParameterInfo param in mi.GetParameters())
                     {
-                        il_gen.EmitWriteLine("Loading argument " + i);
-                        il_gen.Emit(OpCodes.Ldarg_S, (short)i);
+                        PropertyInfo assignee = null;
+                        PropertyInfo[] fin = input.GetProperties( ); //BindingFlags.NonPublic );
+                        foreach( PropertyInfo prop in input.GetProperties( ))
+                        {
+                            if( prop.Name == param.Name )
+                            {
+                                assignee = prop;
+                                break;
+                            }
+                        }
+                        LocalBuilder loc_input = il_gen.DeclareLocal( param.ParameterType );
+                        il_gen.Emit(OpCodes.Call, assignee.GetGetMethod());
+                        il_gen.Emit(OpCodes.Stloc, loc_input.LocalIndex);
+
+                        il_gen.EmitWriteLine("Loading argument " );
+                        il_gen.EmitWriteLine(loc_input);
+                        il_gen.EmitWriteLine("Blarg?" + loc_input.LocalType.ToString());
+                        il_gen.EmitWriteLine("Done");
+                        //il_gen.Emit(OpCodes.Ld, (short)i);
                     }
+                    il_gen.EmitWriteLine("All Arugments Loaded");
                     //il_gen.Emit(OpCodes.Newobj,);
 
-                    il_gen.Emit(OpCodes.Ldstr, "Testing " + method);
+                    //il_gen.Emit(OpCodes.Ldstr, "Testing " + method);
                     //il_gen.Emit(OpCodes.Ldarg_0);
                     //il_gen.Emit(OpCodes.Call, console_debug_out);
                     il_gen.Emit(OpCodes.Call, mi);
-                    il_gen.EmitWriteLine("At end of " + method);
+                    //il_gen.EmitWriteLine("At end of " + method);
                     //il_gen.Emit(OpCodes.Ldstr, "Testing Again");
                     //il_gen.Emit(OpCodes.Stloc,);
+                    //il_gen.Emit(OpCodes.Ldstr, "Moo");
                     il_gen.Emit(OpCodes.Ret);
 
 
 
                     Type service = servicebuilder.CreateType();
-                    Type input = inputbuilder.CreateType();
                     type_list.Add(service);
-                    outputbuilder.CreateType();
 
                     if (methods_to_map[mi].ShortName != null)
                     {
@@ -122,6 +150,7 @@ namespace InterfaceHost
                         name_map[uri] = input;
                     }
 
+                    // test using "InventoryExists" from Main.
                     //Object p = input.GetConstructor(new Type[] { }).Invoke(new object[] { });
                     //PropertyInfo[] pis = input.GetProperties();
                     //input.GetProperty("id").GetSetMethod().Invoke( p, new object[] { 42 } );
@@ -138,22 +167,24 @@ namespace InterfaceHost
             return mapped_types;
         }
 
-        private static Tuple<MethodBuilder,MethodBuilder> CreateProperty(TypeBuilder tb, string propertyName, Type propertyType)
+        private static void CreateProperty(TypeBuilder tb, string propertyName, Type propertyType, CustomAttributeBuilder attr_to_attach )
         {
-            FieldBuilder fieldBuilder = tb.DefineField("_" + propertyName, propertyType, FieldAttributes.Private);
+            string propertyNameNamespace = "";
+            FieldBuilder fieldBuilder = tb.DefineField("_"+ propertyName, propertyType, FieldAttributes.Private);
 
             PropertyBuilder propertyBuilder = tb.DefineProperty(propertyName, PropertyAttributes.HasDefault, propertyType, null);
-            MethodBuilder getPropMethodBuilder = tb.DefineMethod("get_" + propertyName,
+            MethodBuilder getPropMethodBuilder = tb.DefineMethod("get_" + propertyNameNamespace  + propertyName,
                 MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig,
                 propertyType, Type.EmptyTypes);
             ILGenerator getMIl = getPropMethodBuilder.GetILGenerator();
 
             getMIl.Emit(OpCodes.Ldarg_0);
+            getMIl.EmitWriteLine("Getting " + propertyName);
             getMIl.Emit(OpCodes.Ldfld, fieldBuilder);
             getMIl.Emit(OpCodes.Ret);
 
             MethodBuilder setPropMethodBuilder =
-                tb.DefineMethod("set_" + propertyName,
+                tb.DefineMethod("set_" + propertyNameNamespace + propertyName,
                 MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig,
                 null, new[] { propertyType });
 
@@ -173,7 +204,9 @@ namespace InterfaceHost
             propertyBuilder.SetGetMethod(getPropMethodBuilder);
             propertyBuilder.SetSetMethod(setPropMethodBuilder);
 
-            return new Tuple<MethodBuilder,MethodBuilder>( getPropMethodBuilder, setPropMethodBuilder);
+            if( attr_to_attach != null )
+                propertyBuilder.SetCustomAttribute(attr_to_attach);
+
 
         }
     }
