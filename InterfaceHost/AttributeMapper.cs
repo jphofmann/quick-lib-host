@@ -9,10 +9,18 @@ using System.Reflection.Emit;
 namespace InterfaceHost
 {
     // Adapted from http://stackoverflow.com/questions/3862226/dynamically-create-a-class-in-c-sharp
-    class AttributeMapper
+    public class AttributeMapper
     {
+        private static Dictionary<string, OldQuickInventoryHost> _map = new Dictionary<string, OldQuickInventoryHost>();
+        private static int map_num = 0;
+        public static OldQuickInventoryHost mapping(string key)
+        {
+
+            return _map.ContainsKey(key) ? _map[key] : null ;
+        }
         public static Type[] MapToServiceStack(OldQuickInventoryHost host_class, out Dictionary<string, Type> name_map)
         {
+            _map[map_num.ToString()] = host_class;
             name_map = new Dictionary<string, Type>();
             Type[] mapped_types = null;
             Dictionary<MethodInfo, HostInterfaceMethodAttribute> methods_to_map = new Dictionary<MethodInfo, HostInterfaceMethodAttribute>();
@@ -57,6 +65,7 @@ namespace InterfaceHost
                     string method = methods_to_map[mi].MethodName;
                     TypeBuilder servicebuilder = mod_builder.DefineType("InterfaceHost.Dynamic." + host_class.HostedShortName + "." + method + "Server", type_attributes,
                     typeof(ServiceStack.ServiceInterface.Service));
+                    //CreateProperty(servicebuilder, "real", typeof(OldQuickInventoryHost), null);
                     TypeBuilder inputbuilder = mod_builder.DefineType("InterfaceHost.Dynamic." + host_class.HostedShortName + "." + method, type_attributes, null);
                     TypeBuilder outputbuilder = mod_builder.DefineType("InterfaceHost.Dynamic." + host_class.HostedShortName + "." + method + "Response", type_attributes, null);
                     ConstructorBuilder svc_ctor_builder = servicebuilder.DefineDefaultConstructor(MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName);
@@ -82,25 +91,11 @@ namespace InterfaceHost
                     //mth_builder.SetCustomAttribute();
                     ILGenerator il_gen = mth_builder.GetILGenerator();
                     MethodInfo console_debug_out = typeof(System.Console).GetMethod("WriteLine", new Type[] { typeof(string) });
+                    MethodInfo mapping_func = typeof(AttributeMapper).GetMethod("mapping");
                     //ConstructorInfo class_cons = typeof(
-                    System.Console.WriteLine("Defining " + method);
+                    List<LocalBuilder> local_args = new List<LocalBuilder>();
 
-                    il_gen.EmitWriteLine("Testing " + method);
-                    int count = mi.GetParameters().Count();
-                    //LocalBuilder local_host = il_gen.DeclareLocal( typeof(host_class) );
-                    //foreach( ParameterInfo method_param in mi.GetParameters())
-                    //    il_gen.DeclareLocal( method_param.ParameterType )
-                    // class takes in the input type.
-                    il_gen.Emit( OpCodes.Ldarg_0 );
-                    LocalBuilder loc_arg = il_gen.DeclareLocal(input);
-                    il_gen.Emit(OpCodes.Stloc, loc_arg.LocalIndex);
 
-                    il_gen.EmitWriteLine("Input is ");
-                    il_gen.Emit(OpCodes.Ldarg_1);
-                    il_gen.Emit(OpCodes.Call, input.GetMethod("ToString"));
-                    il_gen.Emit(OpCodes.Call, console_debug_out);
-                    il_gen.EmitWriteLine("Should have a simple InventoryExists Item");
-                    il_gen.Emit(OpCodes.Nop);
                     il_gen.Emit(OpCodes.Ldarg_1);
                     foreach( ParameterInfo param in mi.GetParameters())
                     {
@@ -118,26 +113,35 @@ namespace InterfaceHost
                         il_gen.Emit(OpCodes.Call, assignee.GetGetMethod());
                         il_gen.Emit(OpCodes.Stloc, loc_input.LocalIndex);
 
-                        il_gen.EmitWriteLine("Loading argument " );
-                        il_gen.EmitWriteLine(loc_input);
-                        il_gen.EmitWriteLine("Blarg?" + loc_input.LocalType.ToString());
-                        il_gen.EmitWriteLine("Done");
-                        //il_gen.Emit(OpCodes.Ld, (short)i);
+                        //il_gen.EmitWriteLine("Loading argument " );
+                        //il_gen.EmitWriteLine(loc_input);
+                        //il_gen.EmitWriteLine("Blarg?" + loc_input.LocalType.ToString());
+                        //il_gen.EmitWriteLine("Done");
+                        local_args.Add(loc_input);
                     }
-                    il_gen.EmitWriteLine("All Arugments Loaded");
+                    il_gen.Emit(OpCodes.Pop);
+                    il_gen.Emit(OpCodes.Ldstr, map_num.ToString());
+                    il_gen.Emit(OpCodes.Call,mapping_func);
+                    //foreach (LocalBuilder loc in local_args)
+                    //    il_gen.Emit(OpCodes.Ldloc, loc.LocalIndex);
+
+                    //il_gen.EmitWriteLine("All Arugments Loaded");
                     //il_gen.Emit(OpCodes.Newobj,);
+                    //il_gen.Emit(OpCodes.Call, mi);
+
+                    //il_gen.Emit(OpCodes.Ldstr, "Moo");
+                    il_gen.Emit(OpCodes.Ret);
 
                     //il_gen.Emit(OpCodes.Ldstr, "Testing " + method);
                     //il_gen.Emit(OpCodes.Ldarg_0);
                     //il_gen.Emit(OpCodes.Call, console_debug_out);
-                    il_gen.Emit(OpCodes.Call, mi);
+                    //il_gen.Emit(OpCodes.Ldarg_0);
+                    //il_gen.Emit(OpCodes.Nop);
                     //il_gen.EmitWriteLine("At end of " + method);
                     //il_gen.Emit(OpCodes.Ldstr, "Testing Again");
                     //il_gen.Emit(OpCodes.Stloc,);
-                    //il_gen.Emit(OpCodes.Ldstr, "Moo");
-                    il_gen.Emit(OpCodes.Ret);
 
-
+                    string msig = mth_builder.Signature;
 
                     Type service = servicebuilder.CreateType();
                     type_list.Add(service);
@@ -150,13 +154,17 @@ namespace InterfaceHost
                         name_map[uri] = input;
                     }
 
+                    //Func<int, object> testo;
+                    //testo = (Func<int,object>)mth_builder.
+
                     // test using "InventoryExists" from Main.
-                    //Object p = input.GetConstructor(new Type[] { }).Invoke(new object[] { });
-                    //PropertyInfo[] pis = input.GetProperties();
-                    //input.GetProperty("id").GetSetMethod().Invoke( p, new object[] { 42 } );
-                    //Object o = service.GetConstructor(new Type[] { }).Invoke(new object[] { });
-                    //MethodInfo[] mis = service.GetMethods();
-                    //service.InvokeMember("Any", BindingFlags.Public | BindingFlags.Instance | BindingFlags.InvokeMethod, null, o, new object[] { p });
+                    Object p = input.GetConstructor(new Type[] { }).Invoke(new object[] { });
+                    PropertyInfo[] pis = input.GetProperties();
+                    input.GetProperty("id").GetSetMethod().Invoke( p, new object[] { 42 } );
+                    Object o = service.GetConstructor(new Type[] { }).Invoke(new object[] { });
+                    //service.InvokeMember("set_real", BindingFlags.Public | BindingFlags.SetProperty, null, o, new object[] { host_class });
+                    MethodInfo[] mis = service.GetMethods();
+                    object anyout = service.InvokeMember("Any", BindingFlags.Public | BindingFlags.Instance | BindingFlags.InvokeMethod, null, o, new object[] { p });
 
                 }
                 mapped_types = type_list.ToArray();
@@ -164,6 +172,7 @@ namespace InterfaceHost
             }
 
 
+            map_num++;
             return mapped_types;
         }
 
