@@ -21,10 +21,22 @@ namespace InterfaceHost
         {
             DllLoader loader = new DllLoader(args[0]);
             OldQuickInventoryRepositoryHostable h = loader.host.GetConstructor(new Type[] { }).Invoke(null) as OldQuickInventoryRepositoryHostable;
+            Dictionary<string, Type> shortname_map;
             string service_name = h.GetName();
-            ServiceStackHost ssh = new ServiceStackHost( service_name );
-            ssh.Init();
-            //ssh.Start("http://192.168.4.57:9000/");
+            Type[] mapped_types = AttributeMapper.MapToServiceStack(h.GetHost(), out shortname_map);
+            ServiceStackHost ssh = new ServiceStackHost( service_name, mapped_types, shortname_map );
+            try
+            {
+                ssh.Init();
+            }
+            catch (Exception e)
+            {
+                Exception ie = e.InnerException;
+                if (ie is ReflectionTypeLoadException)
+                {
+                    Exception[] le = ((ReflectionTypeLoadException)ie).LoaderExceptions;
+                }
+            }
             ssh.Start("http://+:8088/joinus/");
             Console.WriteLine("ServiceStack-based InterfaceHost v0.0.1, Serving " + service_name);
             Console.WriteLine("Press <enter> to terminate.");
