@@ -65,7 +65,6 @@ namespace InterfaceHost
                     string method = methods_to_map[mi].MethodName;
                     TypeBuilder servicebuilder = mod_builder.DefineType("InterfaceHost.Dynamic." + host_class.HostedShortName + "." + method + "Server", type_attributes,
                     typeof(ServiceStack.ServiceInterface.Service));
-                    //CreateProperty(servicebuilder, "real", typeof(OldQuickInventoryHost), null);
                     TypeBuilder inputbuilder = mod_builder.DefineType("InterfaceHost.Dynamic." + host_class.HostedShortName + "." + method, type_attributes, null);
                     TypeBuilder outputbuilder = mod_builder.DefineType("InterfaceHost.Dynamic." + host_class.HostedShortName + "." + method + "Response", type_attributes, null);
                     ConstructorBuilder svc_ctor_builder = servicebuilder.DefineDefaultConstructor(MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName);
@@ -86,20 +85,15 @@ namespace InterfaceHost
 
 
                     MethodBuilder mth_builder = servicebuilder.DefineMethod("Any", MethodAttributes.Public, typeof(object), new Type[] {input });
-                    //ConstructorInfo ss_attribute = 
-                    CustomAttributeBuilder x;
-                    //mth_builder.SetCustomAttribute();
                     ILGenerator il_gen = mth_builder.GetILGenerator();
                     MethodInfo console_debug_out = typeof(System.Console).GetMethod("WriteLine", new Type[] { typeof(string) });
                     MethodInfo mapping_func = typeof(AttributeMapper).GetMethod("mapping");
-                    //ConstructorInfo class_cons = typeof(
                     List<LocalBuilder> local_args = new List<LocalBuilder>();
 
 
                     foreach( ParameterInfo param in mi.GetParameters())
                     {
                         PropertyInfo assignee = null;
-                        PropertyInfo[] fin = input.GetProperties( ); //BindingFlags.NonPublic );
                         foreach( PropertyInfo prop in input.GetProperties( ))
                         {
                             if( prop.Name == param.Name )
@@ -112,36 +106,17 @@ namespace InterfaceHost
                         il_gen.Emit(OpCodes.Ldarg_1);
                         il_gen.Emit(OpCodes.Call, assignee.GetGetMethod());
                         il_gen.Emit(OpCodes.Stloc, loc_input.LocalIndex);
-
-                        //il_gen.EmitWriteLine("Loading argument " );
-                        //il_gen.EmitWriteLine(loc_input);
-                        //il_gen.EmitWriteLine("Blarg?" + loc_input.LocalType.ToString());
-                        //il_gen.EmitWriteLine("Done");
                         local_args.Add(loc_input);
                     }
-                    //il_gen.Emit(OpCodes.Pop);
                     il_gen.Emit(OpCodes.Ldstr, map_num.ToString());
                     il_gen.Emit(OpCodes.Call,mapping_func);
                     foreach (LocalBuilder loc in local_args)
                         il_gen.Emit(OpCodes.Ldloc, loc.LocalIndex);
 
-                    //il_gen.EmitWriteLine("All Arugments Loaded");
-                    //il_gen.Emit(OpCodes.Newobj,);
                     il_gen.Emit(OpCodes.Call, mi);
 
-                    //il_gen.Emit(OpCodes.Ldstr, "Moo");
                     il_gen.Emit(OpCodes.Ret);
 
-                    //il_gen.Emit(OpCodes.Ldstr, "Testing " + method);
-                    //il_gen.Emit(OpCodes.Ldarg_0);
-                    //il_gen.Emit(OpCodes.Call, console_debug_out);
-                    //il_gen.Emit(OpCodes.Ldarg_0);
-                    //il_gen.Emit(OpCodes.Nop);
-                    //il_gen.EmitWriteLine("At end of " + method);
-                    //il_gen.Emit(OpCodes.Ldstr, "Testing Again");
-                    //il_gen.Emit(OpCodes.Stloc,);
-
-                    string msig = mth_builder.Signature;
 
                     Type service = servicebuilder.CreateType();
                     type_list.Add(service);
@@ -154,23 +129,23 @@ namespace InterfaceHost
                         name_map[uri] = input;
                     }
 
-                    //Func<int, object> testo;
-                    //testo = (Func<int,object>)mth_builder.
-
-                    // test using "InventoryExists" from Main.
-                    Object p = input.GetConstructor(new Type[] { }).Invoke(new object[] { });
-                    PropertyInfo[] pis = input.GetProperties();
-                    PropertyInfo testprop = input.GetProperty("first");
-                    if (testprop != null)
+                    if (false)
                     {
-                        testprop.GetSetMethod().Invoke(p, new object[] { "frank" });
-                        input.GetProperty("second").GetSetMethod().Invoke( p, new object[] { "oak" } );
-                        Object o = service.GetConstructor(new Type[] { }).Invoke(new object[] { });
-                        //service.InvokeMember("set_real", BindingFlags.Public | BindingFlags.SetProperty, null, o, new object[] { host_class });
-                        MethodInfo[] mis = service.GetMethods();
-                        object anyout = service.InvokeMember("Any", BindingFlags.Public | BindingFlags.Instance | BindingFlags.InvokeMethod, null, o, new object[] { p });
-                        //input.GetProperty("id").GetSetMethod().Invoke( p, new object[] { 42 } );
+                        // tests a input object that has the property first and second.
+                        Object p = input.GetConstructor(new Type[] { }).Invoke(new object[] { });
+                        PropertyInfo testprop = input.GetProperty("first");
+                        if (testprop != null)
+                        {
+                            testprop.GetSetMethod().Invoke(p, new object[] { "frank" });
+                            input.GetProperty("second").GetSetMethod().Invoke(p, new object[] { "oak" });
+                            Object o = service.GetConstructor(new Type[] { }).Invoke(new object[] { });
+                            //service.InvokeMember("set_real", BindingFlags.Public | BindingFlags.SetProperty, null, o, new object[] { host_class });
+                            MethodInfo[] mis = service.GetMethods();
+                            object anyout = service.InvokeMember("Any", BindingFlags.Public | BindingFlags.Instance | BindingFlags.InvokeMethod, null, o, new object[] { p });
+                            //input.GetProperty("id").GetSetMethod().Invoke( p, new object[] { 42 } );
+                        }
                     }
+
 
                 }
                 mapped_types = type_list.ToArray();
