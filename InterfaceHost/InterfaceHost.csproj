@@ -24,6 +24,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <UseVSHostingProcess>true</UseVSHostingProcess>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|x86' ">
     <PlatformTarget>x86</PlatformTarget>
@@ -86,6 +87,10 @@
     <ProjectReference Include="..\lib-quick-inventory\Quick.Inventory.csproj">
       <Project>{053112F0-A8DA-47D3-ACA3-75C1F55F01C5}</Project>
       <Name>Quick.Inventory</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\lib-mothership\mothership.csproj">
+      <Project>{3d9e9a10-e710-40ab-b26a-03cd8cbba99d}</Project>
+      <Name>mothership</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

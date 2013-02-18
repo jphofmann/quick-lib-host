@@ -27,15 +27,18 @@ namespace InterfaceHost
                 Console.WriteLine("dll can be relative or absolute path, hosting_url is MS hosting url style ie: http://+:88/my_dll/");
                 Environment.Exit(1);
             }
+
             DllLoader loader = new DllLoader(args[0]);
             OldQuickInventoryRepositoryHostable h = loader.host.GetConstructor(new Type[] { }).Invoke(null) as OldQuickInventoryRepositoryHostable;
             Dictionary<string, Type> shortname_map;
             string service_name = h.GetName();
             Type[] mapped_types = AttributeMapper.MapToServiceStack(h.GetHost(), out shortname_map);
-            ServiceStackHost ssh = new ServiceStackHost( service_name, mapped_types, shortname_map );
+
+            var serviceStackHost = new ServiceStackHost( service_name, mapped_types, shortname_map );
+            
             try
             {
-                ssh.Init();
+                serviceStackHost.Init();
             }
             catch (Exception e)
             {
@@ -50,18 +53,25 @@ namespace InterfaceHost
                 {
                     Console.WriteLine("Error while initializing hosting: " + e.ToString());
                 }
+
+                Console.ReadLine();
                 Environment.Exit(2);
             }
-            try
-            {
-                ssh.Start(args[1]);
+
+            //try
+            //{
+                serviceStackHost.Start(args[1]);
+            /*    
             }
             catch (Exception e)
             {
                 Console.WriteLine("Error starting Hosting: " + e.ToString());
+                Console.ReadLine();
                 Environment.Exit(3);
             }
-            Console.WriteLine("ServiceStack-based InterfaceHost v0.0.1, Serving " + service_name);
+            */
+
+            Console.WriteLine("ServiceStack-based InterfaceHost v0.0.1, Serving {0} @ {1}", service_name, args[1]);
             Console.WriteLine("Press <enter> to terminate.");
             Console.ReadLine();
             Environment.Exit(0);

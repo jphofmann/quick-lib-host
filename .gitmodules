@@ -7,3 +7,6 @@
 [submodule "lib-mothership"]
 	path = lib-mothership
 	url = git@repo.quickhost.org:/lib-mothership.git
+[submodule "lib-inventory-transitory"]
+	path = lib-inventory-transitory
+	url = git@repo.quickhost.org:/lib-inventory-transitory/.git
