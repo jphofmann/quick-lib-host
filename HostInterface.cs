@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace InterfaceHost
+namespace QuickHost
 {
     public class HostInterfaceMethodAttribute : Attribute
     {

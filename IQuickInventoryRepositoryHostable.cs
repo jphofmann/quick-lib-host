@@ -5,7 +5,7 @@ using System.Text;
 using System.ServiceModel;
 using System.ServiceModel.Description;
 
-namespace InterfaceHost
+namespace QuickHost
 {
     public class OldQuickInventoryRepositoryHostable
     {

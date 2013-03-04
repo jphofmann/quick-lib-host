@@ -10,7 +10,7 @@ using System.Runtime.Serialization;
 using ServiceStack.ServiceModel.Serialization;
 using ServiceStack.Logging.Support.Logging;
 
-namespace InterfaceHost
+namespace QuickHost
 {
 
     public class ServiceStackHost : AppHostHttpListenerBase

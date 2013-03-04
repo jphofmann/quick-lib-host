@@ -4,7 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 
-namespace InterfaceHost
+namespace QuickHost
 {
     // Adapted from http://stackoverflow.com/questions/3862226/dynamically-create-a-class-in-c-sharp
     public class AttributeMapper

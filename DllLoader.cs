@@ -6,7 +6,7 @@ using System.Reflection;
 using System.IO;
 using System.Security;
 
-namespace InterfaceHost
+namespace QuickHost
 {
     class DllLoader
     {

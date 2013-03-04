@@ -12,7 +12,7 @@ using System.Diagnostics;
 using System.Xml;
 using System.Xml.XPath;
 
-namespace InterfaceHost
+namespace QuickHost
 {
     // Because ServiceStack uses the .NET Web Hosting code on windows, 
     // this may require a netssh http add urlacl url=http://+:8080/my_dll/ user=\Everyone by an Administrator
@@ -24,6 +24,7 @@ namespace InterfaceHost
             {
                 Console.WriteLine("InterfaceHosh: argument error. Format is <dll> <hosting_url>");
                 Console.WriteLine("dll can be relative or absolute path, hosting_url is MS hosting url style ie: http://+:88/my_dll/");
+                Console.ReadLine();
                 Environment.Exit(1);
             }
 
@@ -35,9 +36,10 @@ namespace InterfaceHost
 
             var serviceStackHost = new ServiceStackHost( service_name, mapped_types, shortname_map );
             
-            try
-            {
+            //try
+            //{
                 serviceStackHost.Init();
+            /*
             }
             catch (Exception e)
             {
@@ -56,6 +58,7 @@ namespace InterfaceHost
                 Console.ReadLine();
                 Environment.Exit(2);
             }
+            */
 
             //try
             //{
