@@ -11,7 +11,6 @@ using System.ServiceModel.Channels;
 using System.Diagnostics;
 using System.Xml;
 using System.Xml.XPath;
-using OldQuick.Inventory;
 
 namespace InterfaceHost
 {

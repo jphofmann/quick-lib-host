@@ -57,7 +57,7 @@ namespace InterfaceHost
 
             foreach (Type assembly_type in _dll.GetTypes())
             {
-                if (assembly_type.BaseType == typeof(OldQuick.Inventory.OldQuickInventoryRepositoryHostable))
+                if (assembly_type.BaseType == typeof(OldQuickInventoryRepositoryHostable))
                 {
                     _host = assembly_type;
                     break;

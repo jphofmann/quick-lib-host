@@ -37,28 +37,29 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="ServiceStack">
-      <HintPath>packages\ServiceStack.3.9.33\lib\net35\ServiceStack.dll</HintPath>
+      <HintPath>packages\ServiceStack.3.9.38\lib\net35\ServiceStack.dll</HintPath>
     </Reference>
     <Reference Include="ServiceStack.Common">
-      <HintPath>packages\ServiceStack.Common.3.9.33\lib\net35\ServiceStack.Common.dll</HintPath>
+      <HintPath>packages\ServiceStack.Common.3.9.38\lib\net35\ServiceStack.Common.dll</HintPath>
     </Reference>
     <Reference Include="ServiceStack.Interfaces">
-      <HintPath>packages\ServiceStack.Common.3.9.33\lib\net35\ServiceStack.Interfaces.dll</HintPath>
+      <HintPath>packages\ServiceStack.Common.3.9.38\lib\net35\ServiceStack.Interfaces.dll</HintPath>
+      <Private>True</Private>
     </Reference>
     <Reference Include="ServiceStack.OrmLite">
-      <HintPath>packages\ServiceStack.OrmLite.SqlServer.3.9.33\lib\ServiceStack.OrmLite.dll</HintPath>
+      <HintPath>packages\ServiceStack.OrmLite.SqlServer.3.9.39\lib\ServiceStack.OrmLite.dll</HintPath>
     </Reference>
     <Reference Include="ServiceStack.OrmLite.SqlServer">
-      <HintPath>packages\ServiceStack.OrmLite.SqlServer.3.9.33\lib\ServiceStack.OrmLite.SqlServer.dll</HintPath>
+      <HintPath>packages\ServiceStack.OrmLite.SqlServer.3.9.39\lib\ServiceStack.OrmLite.SqlServer.dll</HintPath>
     </Reference>
     <Reference Include="ServiceStack.Redis">
-      <HintPath>packages\ServiceStack.Redis.3.9.33\lib\net35\ServiceStack.Redis.dll</HintPath>
+      <HintPath>packages\ServiceStack.Redis.3.9.38\lib\net35\ServiceStack.Redis.dll</HintPath>
     </Reference>
     <Reference Include="ServiceStack.ServiceInterface">
-      <HintPath>packages\ServiceStack.3.9.33\lib\net35\ServiceStack.ServiceInterface.dll</HintPath>
+      <HintPath>packages\ServiceStack.3.9.38\lib\net35\ServiceStack.ServiceInterface.dll</HintPath>
     </Reference>
     <Reference Include="ServiceStack.Text">
-      <HintPath>packages\ServiceStack.Text.3.9.33\lib\net35\ServiceStack.Text.dll</HintPath>
+      <HintPath>packages\ServiceStack.Text.3.9.38\lib\net35\ServiceStack.Text.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -74,6 +75,8 @@
   <ItemGroup>
     <Compile Include="AttributeMapper.cs" />
     <Compile Include="DllLoader.cs" />
+    <Compile Include="HostInterface.cs" />
+    <Compile Include="IQuickInventoryRepositoryHostable.cs" />
     <Compile Include="ServiceStackHost.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -82,16 +85,6 @@
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <DependentUpon>Settings.settings</DependentUpon>
     </Compile>
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\lib-quick-inventory\Quick.Inventory.csproj">
-      <Project>{053112F0-A8DA-47D3-ACA3-75C1F55F01C5}</Project>
-      <Name>Quick.Inventory</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\lib-mothership\mothership.csproj">
-      <Project>{3d9e9a10-e710-40ab-b26a-03cd8cbba99d}</Project>
-      <Name>mothership</Name>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config">
