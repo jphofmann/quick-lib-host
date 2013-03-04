@@ -4,3 +4,4 @@ _ReSharper.*/
 bin/
 InterfaceHost/packages/ServiceStack*/
 obj/
+packages/
