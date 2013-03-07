@@ -74,6 +74,7 @@
   <ItemGroup>
     <Compile Include="QuickHostableAttribute.cs" />
     <Compile Include="QuickHostableAssemblyLoader.cs" />
+    <Compile Include="QuickHostableClassMappings.cs" />
     <Compile Include="QuickHostMethodAttribute.cs" />
     <Compile Include="ServiceStackHost.cs" />
     <Compile Include="Program.cs" />
