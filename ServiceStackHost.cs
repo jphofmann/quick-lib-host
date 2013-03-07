@@ -15,11 +15,18 @@ namespace QuickHost
 
     public class ServiceStackHost : AppHostHttpListenerBase
     {
-        public ServiceStackHost(string name, Type[] to_host, Dictionary<string,Type> route_mapping) :
+        
+        private ServiceStackHost(string name, Type[] to_host, Dictionary<string,Type> route_mapping) :
             base("Interface Host: " + name, to_host.ToList().Select( t => t.Assembly ).ToList().Distinct().ToArray() )
         {
             _routes = route_mapping;
 
+        }
+
+        public static ServiceStackHost CreateFrom(string serviceName, object quickHostableClass)
+        {
+            Dictionary<string, Type> shortnameMap;
+            return new ServiceStackHost(serviceName, AttributeMapper.MapToServiceStack(quickHostableClass, out shortnameMap), shortnameMap);   
         }
 
         private DebugLogFactory logger = null;
