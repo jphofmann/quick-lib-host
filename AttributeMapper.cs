@@ -9,27 +9,27 @@ namespace QuickHost
     // Adapted from http://stackoverflow.com/questions/3862226/dynamically-create-a-class-in-c-sharp
     public class AttributeMapper
     {
-        private static Dictionary<string, OldQuickInventoryHost> _map = new Dictionary<string, OldQuickInventoryHost>();
+        private static Dictionary<string, object> _map = new Dictionary<string, object>();
         private static int map_num = 0;
-        public static OldQuickInventoryHost mapping(string key)
+        public static object mapping(string key)
         {
 
             return _map.ContainsKey(key) ? _map[key] : null ;
         }
-        public static Type[] MapToServiceStack(OldQuickInventoryHost host_class, out Dictionary<string, Type> name_map)
+        public static Type[] MapToServiceStack(object host_class, out Dictionary<string, Type> name_map)
         {
             _map[map_num.ToString()] = host_class;
             name_map = new Dictionary<string, Type>();
             Type[] mapped_types = null;
-            Dictionary<MethodInfo, HostInterfaceMethodAttribute> methods_to_map = new Dictionary<MethodInfo, HostInterfaceMethodAttribute>();
+            Dictionary<MethodInfo, QuickHostMethodAttribute> methods_to_map = new Dictionary<MethodInfo, QuickHostMethodAttribute>();
             Type t = host_class.GetType();
             foreach (MethodInfo method in t.GetMethods())
             {
                 foreach (object attr in method.GetCustomAttributes(true))
                 {
-                    if (attr.GetType() == typeof(HostInterfaceMethodAttribute))
+                    if (attr.GetType() == typeof(QuickHostMethodAttribute))
                     {
-                        methods_to_map.Add(method, (HostInterfaceMethodAttribute)attr);
+                        methods_to_map.Add(method, (QuickHostMethodAttribute)attr);
                         break;
                     }
                 }
@@ -60,11 +60,11 @@ namespace QuickHost
 
                 foreach (MethodInfo mi in methods_to_map.Keys)
                 {
-                    string method = methods_to_map[mi].MethodName;
-                    TypeBuilder servicebuilder = mod_builder.DefineType("InterfaceHost.Dynamic." + host_class.HostedShortName + "." + method + "Server", type_attributes,
+                    string method = methods_to_map[mi].MethodAlias;
+                    TypeBuilder servicebuilder = mod_builder.DefineType("InterfaceHost.Dynamic." + /*host_class.HostedShortName +*/ "." + method + "Server", type_attributes,
                     typeof(ServiceStack.ServiceInterface.Service));
-                    TypeBuilder inputbuilder = mod_builder.DefineType("InterfaceHost.Dynamic." + host_class.HostedShortName + "." + method, type_attributes, null);
-                    TypeBuilder outputbuilder = mod_builder.DefineType("InterfaceHost.Dynamic." + host_class.HostedShortName + "." + method + "Response", type_attributes, null);
+                    TypeBuilder inputbuilder = mod_builder.DefineType("InterfaceHost.Dynamic." + /*host_class.HostedShortName +*/ "." + method, type_attributes, null);
+                    TypeBuilder outputbuilder = mod_builder.DefineType("InterfaceHost.Dynamic." + /*host_class.HostedShortName +*/ "." + method + "Response", type_attributes, null);
                     ConstructorBuilder svc_ctor_builder = servicebuilder.DefineDefaultConstructor(MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName);
                     ConstructorBuilder in_ctor_builder = inputbuilder.DefineDefaultConstructor(MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName);
                     ConstructorBuilder out_ctor_builder = outputbuilder.DefineDefaultConstructor(MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName);
@@ -110,46 +110,22 @@ namespace QuickHost
                     il_gen.Emit(OpCodes.Call,mapping_func);
                     foreach (LocalBuilder loc in local_args)
                         il_gen.Emit(OpCodes.Ldloc, loc.LocalIndex);
-
+                    il_gen.EmitWriteLine("Calling " + mi.Name + ".");
                     il_gen.Emit(OpCodes.Call, mi);
-
                     il_gen.Emit(OpCodes.Ret);
-
 
                     Type service = servicebuilder.CreateType();
                     type_list.Add(service);
 
-                    if (methods_to_map[mi].ShortName != null)
+                    if (methods_to_map[mi].RestUriAlias != null)
                     {
-
                         // produce /func/{Arg1}/{Arg2} style uri
-                        string uri = methods_to_map[mi].ShortName + mi.GetParameters().Aggregate<ParameterInfo, string>("", (sd, pi) => sd += "/{" + pi.Name + "}");
+                        string uri = methods_to_map[mi].RestUriAlias + mi.GetParameters().Aggregate<ParameterInfo, string>("", (sd, pi) => sd += "/{" + pi.Name + "}");
                         name_map[uri] = input;
                     }
-
-                    if (false)
-                    {
-                        // tests a input object that has the property first and second.
-                        Object p = input.GetConstructor(new Type[] { }).Invoke(new object[] { });
-                        PropertyInfo testprop = input.GetProperty("first");
-                        if (testprop != null)
-                        {
-                            testprop.GetSetMethod().Invoke(p, new object[] { "frank" });
-                            input.GetProperty("second").GetSetMethod().Invoke(p, new object[] { "oak" });
-                            Object o = service.GetConstructor(new Type[] { }).Invoke(new object[] { });
-                            //service.InvokeMember("set_real", BindingFlags.Public | BindingFlags.SetProperty, null, o, new object[] { host_class });
-                            MethodInfo[] mis = service.GetMethods();
-                            object anyout = service.InvokeMember("Any", BindingFlags.Public | BindingFlags.Instance | BindingFlags.InvokeMethod, null, o, new object[] { p });
-                            //input.GetProperty("id").GetSetMethod().Invoke( p, new object[] { 42 } );
-                        }
-                    }
-
-
                 }
                 mapped_types = type_list.ToArray();
-
             }
-
 
             map_num++;
             return mapped_types;
@@ -167,7 +143,7 @@ namespace QuickHost
             ILGenerator getMIl = getPropMethodBuilder.GetILGenerator();
 
             getMIl.Emit(OpCodes.Ldarg_0);
-            getMIl.EmitWriteLine("Getting " + propertyName);
+            // getMIl.EmitWriteLine("Getting " + propertyName);
             getMIl.Emit(OpCodes.Ldfld, fieldBuilder);
             getMIl.Emit(OpCodes.Ret);
 

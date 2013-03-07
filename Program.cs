@@ -15,26 +15,39 @@ using System.Xml.XPath;
 namespace QuickHost
 {
     // Because ServiceStack uses the .NET Web Hosting code on windows, 
-    // this may require a netssh http add urlacl url=http://+:8080/my_dll/ user=\Everyone by an Administrator
+    // this may require a netsh http add urlacl url=http://+:8080/my_dll/ user=\Everyone by an Administrator
     public class Program
     {
         static void Main(string[] args)
         {
             if (args.Count() != 2)
             {
-                Console.WriteLine("InterfaceHosh: argument error. Format is <dll> <hosting_url>");
-                Console.WriteLine("dll can be relative or absolute path, hosting_url is MS hosting url style ie: http://+:88/my_dll/");
+                Console.WriteLine("QuickHost: argument error. Format is <assembly_path> <hosting_url>");
+                Console.WriteLine("<assembly_path> can be a relative or absolute path.");
+                Console.WriteLine("<hosting_url> is a MS hosting style url. (ie: http://+:88/my_dll/)");
                 Console.ReadLine();
                 Environment.Exit(1);
             }
 
-            DllLoader loader = new DllLoader(args[0]);
-            OldQuickInventoryRepositoryHostable h = loader.host.GetConstructor(new Type[] { }).Invoke(null) as OldQuickInventoryRepositoryHostable;
-            Dictionary<string, Type> shortname_map;
-            string service_name = h.GetName();
-            Type[] mapped_types = AttributeMapper.MapToServiceStack(h.GetHost(), out shortname_map);
+            object hostedDll = null;
+            string serviceName = null;
 
-            var serviceStackHost = new ServiceStackHost( service_name, mapped_types, shortname_map );
+            try
+            {
+                QuickHostableAssemblyLoader.Load(args[0], out hostedDll, out serviceName);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Error loading assembly." + e);
+                Console.ReadLine();
+                Environment.Exit(2);
+            }
+
+            var shortname_map = new Dictionary<string,Type>();
+
+            var mapped_types = AttributeMapper.MapToServiceStack(hostedDll, out shortname_map);
+
+            var serviceStackHost = new ServiceStackHost(serviceName, mapped_types, shortname_map);
             
             //try
             //{
@@ -56,7 +69,7 @@ namespace QuickHost
                 }
 
                 Console.ReadLine();
-                Environment.Exit(2);
+                Environment.Exit(3);
             }
             */
 
@@ -69,11 +82,11 @@ namespace QuickHost
             {
                 Console.WriteLine("Error starting Hosting: " + e.ToString());
                 Console.ReadLine();
-                Environment.Exit(3);
+                Environment.Exit(4);
             }
             */
 
-            Console.WriteLine("ServiceStack-based InterfaceHost v0.0.1, Serving {0} @ {1}", service_name, args[1]);
+            Console.WriteLine("ServiceStack-based InterfaceHost v0.0.1, Serving {0} @ {1}", serviceName, args[1]);
             Console.WriteLine("Press <enter> to terminate.");
             Console.ReadLine();
             Environment.Exit(0);

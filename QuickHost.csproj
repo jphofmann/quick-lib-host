@@ -8,8 +8,8 @@
     <ProjectGuid>{99C3D422-8FBF-4CE3-81EE-CDF1266B53FA}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>InterfaceHost</RootNamespace>
-    <AssemblyName>InterfaceHost</AssemblyName>
+    <RootNamespace>QuickHost</RootNamespace>
+    <AssemblyName>QuickHost</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <TargetFrameworkProfile>
     </TargetFrameworkProfile>
@@ -73,9 +73,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AttributeMapper.cs" />
-    <Compile Include="DllLoader.cs" />
-    <Compile Include="HostInterface.cs" />
-    <Compile Include="IQuickInventoryRepositoryHostable.cs" />
+    <Compile Include="QuickHostableAttribute.cs" />
+    <Compile Include="QuickHostableAssemblyLoader.cs" />
+    <Compile Include="QuickHostMethodAttribute.cs" />
     <Compile Include="ServiceStackHost.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
