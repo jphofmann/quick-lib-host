@@ -12,8 +12,12 @@ namespace QuickHost
 
     public class ServiceStackHost : AppHostHttpListenerBase
     {
-        private ServiceStackHost(string name, List<Assembly> assembliesWithServices, Dictionary<string, Type> restRouteMap) :
-            base("QuickHost: " + name, assembliesWithServices.ToArray())
+        private readonly Dictionary<string, Type> _restRouteMap;
+
+        private 
+            ServiceStackHost(
+                string name, List<Assembly> assembliesWithServices, Dictionary<string, Type> restRouteMap) 
+            : base("QuickHost: " + name, assembliesWithServices.ToArray())
         {
             _restRouteMap = restRouteMap;
         }
@@ -29,24 +33,27 @@ namespace QuickHost
             return new ServiceStackHost(serviceName, assembliesWithServices, restRouteMap);   
         }
 
-        private readonly Dictionary<string, Type> _restRouteMap;
-
         public override void Configure(Funq.Container container)
         {
-            EndpointHostConfig endpoint_config = new EndpointHostConfig();
-            endpoint_config.WsdlSoapActionNamespace = "http://api.quickhost.org/data";
-            endpoint_config.WsdlServiceNamespace = "http://api.quickhost.org/data";
-            endpoint_config.LogFactory = new DebugLogFactory();
-            //endpoint_config.
-            SetConfig( endpoint_config );
-            foreach (string route in _restRouteMap.Keys)
+            SetConfig( 
+                new EndpointHostConfig {
+                    WsdlSoapActionNamespace = "http://api.quickhost.org/data",
+                    WsdlServiceNamespace = "http://api.quickhost.org/data",
+                    LogFactory = new DebugLogFactory()});
+
+            foreach (var route in _restRouteMap.Keys)
             {
                 Routes.Add(_restRouteMap[route], "/" + route, "GET");
             }
         }
 
         // Informed by http://stackoverflow.com/questions/3862226/dynamically-create-a-class-in-c-sharp
-        private static void GenerateServiceInterfaceAssemblies(string serviceName, object quickHostableClass, out List<Assembly> assembliesWithServices, out Dictionary<string, Type> restRouteMap)
+        private static void 
+            GenerateServiceInterfaceAssemblies(
+                string serviceName, 
+                object quickHostableClass, 
+                out List<Assembly> assembliesWithServices, 
+                out Dictionary<string, Type> restRouteMap)
         {
             assembliesWithServices = new List<Assembly>();
             restRouteMap = new Dictionary<string, Type>();
@@ -70,7 +77,7 @@ namespace QuickHost
             }
 
             #region Define some attributes.
-
+            
             var assemblyVersionAttribute =
                 new CustomAttributeBuilder(
                     typeof (AssemblyVersionAttribute).GetConstructor(
@@ -86,7 +93,7 @@ namespace QuickHost
             var dataMemberAttribute = 
                 new CustomAttributeBuilder(
                     typeof(DataMemberAttribute).GetConstructor(new Type[] { }), new object[] { });
-
+            
             const TypeAttributes someTypeAttributes =
                 TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.AutoClass |
                 TypeAttributes.AnsiClass | TypeAttributes.BeforeFieldInit | TypeAttributes.AutoLayout;
@@ -205,14 +212,14 @@ namespace QuickHost
                     continue;
                 }
                 
-                // Generate rest routes.
+                // Generate rest route information.
 
                 // produce /RestUriAlias/{Arg1}/{Arg2} style URI.
                 var uri = 
                     String.Format(
                         "{0}{1}",
                         methodsToHost[hostedMethodInfo].RestUriAlias,
-                        hostedMethodInfo.GetParameters().Aggregate("", (sd, pi) => sd += "/{" + pi.Name + "}"));
+                        hostedMethodInfo.GetParameters().Aggregate("", (sd, pi) => sd + ("/{" + pi.Name + "}")));
 
                 restRouteMap[uri] = request;
             }
