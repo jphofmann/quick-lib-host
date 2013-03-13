@@ -76,6 +76,13 @@ namespace QuickHost
                 throw new Exception(String.Format("{0} has no methods to host.", serviceName));
             }
 
+            /*
+            var typesToHost = 
+                quickHostableClass.GetType().GetNestedTypes()
+                    .Where(type => type.GetCustomAttributes(typeof (QuickHostTypeAttribute), true).Length > 0)
+                    .ToList();
+            */
+
             #region Define some attributes.
             
             var assemblyVersionAttribute =
@@ -90,10 +97,6 @@ namespace QuickHost
                         new[] { typeof(DataContractAttribute).GetProperty("Namespace") },
                         new object[] { "http://api.quickhost.org/data" });
 
-            var dataMemberAttribute = 
-                new CustomAttributeBuilder(
-                    typeof(DataMemberAttribute).GetConstructor(new Type[] { }), new object[] { });
-            
             const TypeAttributes someTypeAttributes =
                 TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.AutoClass |
                 TypeAttributes.AnsiClass | TypeAttributes.BeforeFieldInit | TypeAttributes.AutoLayout;
@@ -139,11 +142,7 @@ namespace QuickHost
 
                 foreach (var parameterInfo in hostedMethodInfo.GetParameters())
                 {
-                    CreateProperty(
-                        requestTypeBuilder, 
-                        parameterInfo.Name, 
-                        parameterInfo.ParameterType, 
-                        new List<CustomAttributeBuilder> { dataMemberAttribute });
+                    CreatePropertyFromParameter(requestTypeBuilder, parameterInfo); 
                 }
 
                 var request = requestTypeBuilder.CreateType();
@@ -156,7 +155,10 @@ namespace QuickHost
                 // Build Response DTO
                 var responseTypeBuilder = 
                     assemblyModuleBuilder.DefineType(
-                        assemblyName.Name + "." + methodAlias + "Response", someTypeAttributes, null);
+                        assemblyName.Name + "." + methodAlias + "Response", 
+                        someTypeAttributes,
+                        hostedMethodInfo.ReturnParameter == null 
+                            ? null : hostedMethodInfo.ReturnParameter.ParameterType);
                 
                 responseTypeBuilder.SetCustomAttribute(dataContractAttribute);
                 responseTypeBuilder.DefineDefaultConstructor(someMethodAttributes);
@@ -225,25 +227,23 @@ namespace QuickHost
             }
         }
 
-        private static void CreateProperty(
-            TypeBuilder typeBuilder, 
-            string propertyName, 
-            Type propertyType, 
-            IEnumerable<CustomAttributeBuilder> customAttributeBuilders)
+        private static void CreatePropertyFromParameter(TypeBuilder typeBuilder, ParameterInfo parameterInfo)
         {
             var propertyBuilder =
-                typeBuilder.DefineProperty(propertyName, PropertyAttributes.HasDefault, propertyType, null);
+                typeBuilder.DefineProperty(
+                    parameterInfo.Name, PropertyAttributes.HasDefault, parameterInfo.ParameterType, null);
 
-            var fieldBuilder = 
-                typeBuilder.DefineField("_" + propertyName, propertyType, FieldAttributes.Private);
+            var fieldBuilder =
+                typeBuilder.DefineField(
+                    "_" + parameterInfo.Name, parameterInfo.ParameterType, FieldAttributes.Private);
 
             // Create get method.
 
             var getMethodBuilder = 
                 typeBuilder.DefineMethod(
-                    "get_" + propertyName,
+                    "get_" + parameterInfo.Name,
                     MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig,
-                    propertyType, 
+                    parameterInfo.ParameterType, 
                     Type.EmptyTypes);
 
             var getMethodILGenerator = getMethodBuilder.GetILGenerator();
@@ -258,10 +258,10 @@ namespace QuickHost
 
             var setMethodBuilder =
                 typeBuilder.DefineMethod(
-                    "set_" + propertyName,
+                    "set_" + parameterInfo.Name,
                     MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig,
-                    null, 
-                    new[] { propertyType });
+                    null,
+                    new[] { parameterInfo.ParameterType });
 
             var setMethodILGenerator = setMethodBuilder.GetILGenerator();
             
@@ -276,12 +276,10 @@ namespace QuickHost
 
             propertyBuilder.SetSetMethod(setMethodBuilder);
 
-            // Add attributes;
-
-            foreach (var customAttributeBuilder in customAttributeBuilders)
-            {
-                propertyBuilder.SetCustomAttribute(customAttributeBuilder);
-            }
+            propertyBuilder
+                .SetCustomAttribute(
+                    new CustomAttributeBuilder(
+                        typeof(DataMemberAttribute).GetConstructor(new Type[] { }), new object[] { }));              
         }
     }    
 }
