@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.Serialization;
 using QuickHost;
 
 namespace QuickHostedExample
@@ -7,9 +8,36 @@ namespace QuickHostedExample
     public class ExampleHost
     {
         [QuickHostMethod("PokeTheExampleBear", "ExampleBearPoke")]
-        public string PokeTheExampleBear(int os)
+        public PokeTheExampleBearResult PokeTheExampleBear(PokeAttributes pokeAttributes)
         {
-            return String.Format("ExampleGR{0}AAR!", new String('O', os));
+            return 
+                new PokeTheExampleBearResult {
+                    PokeInstanceNumber = 1,
+                    Vocalization =
+                        String.Format(
+                            "ExampleGR{0}AAR!",
+                            new String(pokeAttributes.Strength > 5 ? 'O' : 'o', pokeAttributes.Duration))};
+        }
+
+        [DataContract]
+        [QuickHostType]
+        public class PokeAttributes
+        {
+            [DataMember]
+            public int Strength;
+
+            [DataMember]
+            public int Duration;
+        }
+
+        [DataContract]
+        public class PokeTheExampleBearResult
+        {
+            [DataMember]
+            public int PokeInstanceNumber;
+            
+            [DataMember]
+            public String Vocalization;
         }
     }
 }
