@@ -156,13 +156,15 @@ namespace QuickHost
                 var responseTypeBuilder = 
                     assemblyModuleBuilder.DefineType(
                         assemblyName.Name + "." + methodAlias + "Response", 
-                        someTypeAttributes,
-                        hostedMethodInfo.ReturnParameter == null 
-                            ? null : hostedMethodInfo.ReturnParameter.ParameterType);
+                        someTypeAttributes, null );
+                if( hostedMethodInfo.ReturnParameter != null )
+                {
+                    CreatePropertyFromParameter(responseTypeBuilder, hostedMethodInfo.ReturnParameter);
+                }
                 
                 responseTypeBuilder.SetCustomAttribute(dataContractAttribute);
                 responseTypeBuilder.DefineDefaultConstructor(someMethodAttributes);
-                responseTypeBuilder.CreateType();
+                Type responseType = responseTypeBuilder.CreateType();
 
                 // Build service class.
 
@@ -176,7 +178,7 @@ namespace QuickHost
 
                 var anyMethodILGenerator = 
                     serviceTypeBuilder.DefineMethod(
-                        "Any", MethodAttributes.Public, typeof(object), new [] { request }).GetILGenerator();
+                        "Any", MethodAttributes.Public, responseType, new [] { request }).GetILGenerator();
 
                 var anyMethodParameterLocalBuilders = new List<LocalBuilder>();
 
@@ -204,6 +206,20 @@ namespace QuickHost
 
                 anyMethodILGenerator.EmitWriteLine("Calling " + hostedMethodInfo.Name + ".");
                 anyMethodILGenerator.Emit(OpCodes.Call, hostedMethodInfo);
+                if( hostedMethodInfo.ReturnParameter != null )
+                {
+                    var rtc = responseType.GetConstructor(new Type[] { });
+                    var setMethod = responseType.GetProperties().First(x => x.Name == "result").GetSetMethod();
+                    var resultParam = anyMethodILGenerator.DeclareLocal(hostedMethodInfo.ReturnParameter.ParameterType);
+                    var wrappedParam = anyMethodILGenerator.DeclareLocal(responseType);
+                    anyMethodILGenerator.Emit(OpCodes.Stloc, resultParam.LocalIndex);
+                    anyMethodILGenerator.Emit(OpCodes.Newobj, rtc);
+                    anyMethodILGenerator.Emit(OpCodes.Stloc, wrappedParam.LocalIndex);
+                    anyMethodILGenerator.Emit(OpCodes.Ldloc, wrappedParam.LocalIndex);
+                    anyMethodILGenerator.Emit(OpCodes.Ldloc, resultParam.LocalIndex);
+                    anyMethodILGenerator.Emit(OpCodes.Call,setMethod);
+                    anyMethodILGenerator.Emit(OpCodes.Ldloc, wrappedParam.LocalIndex);
+                }
                 anyMethodILGenerator.Emit(OpCodes.Ret);
 
                 assembliesWithServices.Add(serviceTypeBuilder.CreateType().Assembly);
