@@ -245,19 +245,20 @@ namespace QuickHost
 
         private static void CreatePropertyFromParameter(TypeBuilder typeBuilder, ParameterInfo parameterInfo)
         {
+            var parameterName = parameterInfo.Name != null ? parameterInfo.Name : "result";
             var propertyBuilder =
                 typeBuilder.DefineProperty(
-                    parameterInfo.Name, PropertyAttributes.HasDefault, parameterInfo.ParameterType, null);
+                    parameterName, PropertyAttributes.HasDefault, parameterInfo.ParameterType, null);
 
             var fieldBuilder =
                 typeBuilder.DefineField(
-                    "_" + parameterInfo.Name, parameterInfo.ParameterType, FieldAttributes.Private);
+                    "_" + parameterName, parameterInfo.ParameterType, FieldAttributes.Private);
 
             // Create get method.
 
             var getMethodBuilder = 
                 typeBuilder.DefineMethod(
-                    "get_" + parameterInfo.Name,
+                    "get_" + parameterName,
                     MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig,
                     parameterInfo.ParameterType, 
                     Type.EmptyTypes);
@@ -274,7 +275,7 @@ namespace QuickHost
 
             var setMethodBuilder =
                 typeBuilder.DefineMethod(
-                    "set_" + parameterInfo.Name,
+                    "set_" + parameterName,
                     MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig,
                     null,
                     new[] { parameterInfo.ParameterType });
