@@ -17,6 +17,18 @@ namespace QuickHost
             try
             {
                 quickHostableAssembly = Assembly.LoadFrom(assemblyPath);
+
+                AppDomain.CurrentDomain.AssemblyResolve +=
+                    (sender, args) =>
+                        {
+                            var path =
+                                Path.Combine(assemblyPath.Substring(0, assemblyPath.LastIndexOf('\\') + 1) + args.Name + ".dll");
+                            
+                            if (!File.Exists(path))
+                                return null;
+                            
+                            return Assembly.LoadFrom(path);
+                        };
             }
             catch (Exception e)
             {
