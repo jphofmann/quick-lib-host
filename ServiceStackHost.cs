@@ -214,9 +214,8 @@ namespace QuickHost
                     anyMethodILGenerator.Emit(OpCodes.Ldloc, wrappedParam.LocalIndex);
                 }
                 anyMethodILGenerator.Emit(OpCodes.Ret);
-
-                assembliesWithServices.Add(serviceTypeBuilder.CreateType().Assembly);
-
+                serviceTypeBuilder.CreateType();
+                
                 if (methodsToHost[hostedMethodInfo].RestUriAlias == null)
                 {
                     // No rest routes defined.
@@ -234,6 +233,8 @@ namespace QuickHost
 
                 restRouteMap[uri] = request;
             }
+
+            assembliesWithServices.Add(assemblyModuleBuilder.Assembly);
         }
 
         private static void CreatePropertyFromParameter(TypeBuilder typeBuilder, ParameterInfo parameterInfo)
