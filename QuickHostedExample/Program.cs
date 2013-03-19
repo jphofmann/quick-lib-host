@@ -20,7 +20,6 @@ namespace QuickHostedExample
         }
 
         [DataContract]
-        [QuickHostType]
         public class PokeAttributes
         {
             [DataMember]

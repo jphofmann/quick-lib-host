@@ -76,13 +76,6 @@ namespace QuickHost
                 throw new Exception(String.Format("{0} has no methods to host.", serviceName));
             }
 
-            /*
-            var typesToHost = 
-                quickHostableClass.GetType().GetNestedTypes()
-                    .Where(type => type.GetCustomAttributes(typeof (QuickHostTypeAttribute), true).Length > 0)
-                    .ToList();
-            */
-
             #region Define some attributes.
             
             var assemblyVersionAttribute =
