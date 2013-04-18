@@ -11,7 +11,12 @@ namespace QuickHost
 {
     public class ServiceStackHost : AppHostHttpListenerBase
     {
-        private readonly Dictionary<string, Type> _restRouteMap;
+        //Constants for the standard properties
+        private const string PROP_NAME_RC = "ReturnCode";
+        private const string PROP_NAME_ERROR = "ErrorMessage";
+        private const string PROP_NAME_RESULT = "Result";
+
+        public Dictionary<string, Type> _restRouteMap;
 
         private 
             ServiceStackHost(
@@ -45,15 +50,6 @@ namespace QuickHost
                 Routes.Add(_restRouteMap[route], "/" + route, "GET");
             }
         }
-
-
-        //krk begin - Can these be made private?
-        //public class ResponseStatus
-        //{
-        //    public int rc { get; set; }
-        //    public string errorMessage { get; set; }
-        //}
-        //krk end
 
         // Informed by http://stackoverflow.com/questions/3862226/dynamically-create-a-class-in-c-sharp
         private static void 
@@ -97,14 +93,13 @@ namespace QuickHost
                         new object[] { },
                         new[] { typeof(DataContractAttribute).GetProperty("Namespace") },
                         new object[] { "http://api.quickhost.org/data" });
-
+            
             const TypeAttributes someTypeAttributes =
                 TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.AutoClass |
                 TypeAttributes.AnsiClass | TypeAttributes.BeforeFieldInit | TypeAttributes.AutoLayout;
 
             const MethodAttributes someMethodAttributes =
                 MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.RTSpecialName;
-            
             #endregion
 
             // Construct assembly.
@@ -133,180 +128,161 @@ namespace QuickHost
                 var methodAlias = methodsToHost[hostedMethodInfo].MethodAlias;
 
                 // Build Request DTO
-
-                var requestTypeBuilder = 
+                TypeBuilder requestTypeBuilder =
                     assemblyModuleBuilder.DefineType(
                         assemblyName.Name + "." + methodAlias, someTypeAttributes, null);
-                
+
                 requestTypeBuilder.SetCustomAttribute(dataContractAttribute);
                 requestTypeBuilder.DefineDefaultConstructor(someMethodAttributes);
 
                 foreach (var parameterInfo in hostedMethodInfo.GetParameters())
                 {
-                    CreatePropertyFromParameter(requestTypeBuilder, parameterInfo); 
+                    CreatePropertyFromParameter(requestTypeBuilder, parameterInfo);
                 }
-
                 var request = requestTypeBuilder.CreateType();
 
-                if (request == null)
-                {
-                    throw new Exception(String.Format("Unable to create type '{0}'.", requestTypeBuilder.Name));
-                }
-
-                //KRK Build Combined Response Type (ResponseStatus + OriginalResponseType)
-                //var combinedResponseTypeBuilder =
-                //    assemblyModuleBuilder.DefineType(
-                //        assemblyName.Name + "." + methodAlias + "CombinedResponseType",
-                //        someTypeAttributes, null);
-
-                // Build Response DTO
-                var responseTypeBuilder = 
+                TypeBuilder responseTypeBuilder =
                     assemblyModuleBuilder.DefineType(
-                        assemblyName.Name + "." + methodAlias + "Response", 
-                        someTypeAttributes, null );
-                if( hostedMethodInfo.ReturnParameter != null )
+                        assemblyName.Name + "." + methodAlias + "Response", someTypeAttributes, null);
+
+                if (hostedMethodInfo.ReturnParameter != null)
                 {
                     CreatePropertyFromParameter(responseTypeBuilder, hostedMethodInfo.ReturnParameter);
-                    CreateResponseProperty(responseTypeBuilder);
-                    //CreateResponsePropertyFromParameter(combinedResponseTypeBuilder, responseTypeBuilder, hostedMethodInfo.ReturnParameter);
-                    //CreateResponsePropertyFromParameter(responseTypeBuilder, hostedMethodInfo.ReturnParameter);
                 }
+
+                //Add standard response properties
+                CreateProperty(responseTypeBuilder, PROP_NAME_RC, typeof(int));
+                CreateProperty(responseTypeBuilder, PROP_NAME_ERROR, typeof(string));
 
                 responseTypeBuilder.SetCustomAttribute(dataContractAttribute);
                 responseTypeBuilder.DefineDefaultConstructor(someMethodAttributes);
-                Type responseType = responseTypeBuilder.CreateType();
+
+                var responseType = responseTypeBuilder.CreateType();
+                if (responseType == null)
+                {
+                    throw new Exception(String.Format("Unable to create type '{0}'.", responseType.Name));
+                }
 
                 // Build service class.
-
-                var serviceTypeBuilder = 
+                var serviceTypeBuilder =
                     assemblyModuleBuilder.DefineType(
-                        assemblyName.Name + "." + methodAlias + "Service", 
-                        someTypeAttributes, 
+                        assemblyName.Name + "." + methodAlias + "Service",
+                        someTypeAttributes,
                         typeof(ServiceStack.ServiceInterface.Service));
 
                 serviceTypeBuilder.DefineDefaultConstructor(someMethodAttributes);
 
-                var anyMethodILGenerator = 
+                ILGenerator anyMethodILGenerator =
                     serviceTypeBuilder.DefineMethod(
-                        "Any", MethodAttributes.Public, responseType, new [] { request }).GetILGenerator();
-
-                //krk begin Try Catch logic
-                //Label lblTry = anyMethodILGenerator.BeginExceptionBlock();
+                        "Any", MethodAttributes.Public, responseType, new[] { request }).GetILGenerator();
 
                 var anyMethodParameterLocalBuilders = new List<LocalBuilder>();
+                
+                //Begin Try/Catch/Finally exception block
+                Label lblExCatch = anyMethodILGenerator.BeginExceptionBlock();
 
                 foreach (var parameterInfo in hostedMethodInfo.GetParameters())
                 {
                     var parameterLocalBuilder = anyMethodILGenerator.DeclareLocal(parameterInfo.ParameterType);
                     anyMethodILGenerator.Emit(OpCodes.Ldarg_1);
-                    
+
                     anyMethodILGenerator
                         .Emit(
-                            OpCodes.Call, 
+                            OpCodes.Call,
                             request.GetProperties().First(x => x.Name == parameterInfo.Name).GetGetMethod());
 
                     anyMethodILGenerator.Emit(OpCodes.Stloc, parameterLocalBuilder.LocalIndex);
+
                     anyMethodParameterLocalBuilders.Add(parameterLocalBuilder);
                 }
 
                 anyMethodILGenerator.Emit(OpCodes.Ldstr, serviceName);
-                
+
                 anyMethodILGenerator
                     .Emit(OpCodes.Call, typeof(QuickHostableClassMappings).GetMethod("GetHostedClass"));
-                
+
                 foreach (var localBuilder in anyMethodParameterLocalBuilders)
                     anyMethodILGenerator.Emit(OpCodes.Ldloc, localBuilder.LocalIndex);
 
                 anyMethodILGenerator.EmitWriteLine("Calling " + hostedMethodInfo.Name + ".");
 
-                anyMethodILGenerator.Emit(OpCodes.Call, hostedMethodInfo);
-                if( hostedMethodInfo.ReturnParameter != null )
-                {
-                    //Discover Golden Begin
-                    var rtc = responseType.GetConstructor(new Type[] { });
-                    var setMethod = responseType.GetProperties().First(x => x.Name == "result").GetSetMethod();
-                    var resultParam = anyMethodILGenerator.DeclareLocal(hostedMethodInfo.ReturnParameter.ParameterType);
-                    var wrappedParam = anyMethodILGenerator.DeclareLocal(responseType);
-                    anyMethodILGenerator.Emit(OpCodes.Stloc, resultParam.LocalIndex);
-                    anyMethodILGenerator.Emit(OpCodes.Newobj, rtc);
-                    anyMethodILGenerator.Emit(OpCodes.Stloc, wrappedParam.LocalIndex);
-                    anyMethodILGenerator.Emit(OpCodes.Ldloc, wrappedParam.LocalIndex);
-                    anyMethodILGenerator.Emit(OpCodes.Ldloc, resultParam.LocalIndex);
-                    anyMethodILGenerator.Emit(OpCodes.Call, setMethod);
-                    anyMethodILGenerator.Emit(OpCodes.Ldloc, wrappedParam.LocalIndex);
-                    //Discover Golden End
+                //Discover Golden Begin
+                //var rtc = responseType.GetConstructor(new Type[] { });
+                //var setMethod = responseType.GetProperties().First(x => x.Name == "result").GetSetMethod();
+                //var resultParam = anyMethodILGenerator.DeclareLocal(hostedMethodInfo.ReturnParameter.ParameterType);
+                //var wrappedParam = anyMethodILGenerator.DeclareLocal(responseType);
+                //anyMethodILGenerator.Emit(OpCodes.Stloc, resultParam.LocalIndex);
+                //anyMethodILGenerator.Emit(OpCodes.Newobj, rtc);
+                //anyMethodILGenerator.Emit(OpCodes.Stloc, wrappedParam.LocalIndex);
+                //anyMethodILGenerator.Emit(OpCodes.Ldloc, wrappedParam.LocalIndex);
+                //anyMethodILGenerator.Emit(OpCodes.Ldloc, resultParam.LocalIndex);
+                //anyMethodILGenerator.Emit(OpCodes.Call, setMethod);
+                //anyMethodILGenerator.Emit(OpCodes.Ldloc, wrappedParam.LocalIndex);
+                //Discover Golden End
 
-                    //var rtc = responseType.GetConstructor(new Type[] { });
-                    //var setMethod = responseType.GetProperties().First(x => x.Name == "result").GetSetMethod();
-                    //var setResponseMethod = responseType.GetProperties().First(x => x.Name.StartsWith("response")).GetSetMethod();
-                    //var resultParam = anyMethodILGenerator.DeclareLocal(hostedMethodInfo.ReturnParameter.ParameterType);
-                    //var responseStatusParam = anyMethodILGenerator.DeclareLocal(typeof(Int32));
-                    //var wrappedParam = anyMethodILGenerator.DeclareLocal(responseType);
-                    //anyMethodILGenerator.Emit(OpCodes.Stloc, resultParam.LocalIndex);
-                    //anyMethodILGenerator.Emit(OpCodes.Newobj, rtc);
-                    //anyMethodILGenerator.Emit(OpCodes.Stloc, wrappedParam.LocalIndex);
-                    //anyMethodILGenerator.Emit(OpCodes.Ldloc, wrappedParam.LocalIndex);
-                    //anyMethodILGenerator.Emit(OpCodes.Ldloc, resultParam.LocalIndex);
-                    //anyMethodILGenerator.Emit(OpCodes.Call, setMethod);
-                    //anyMethodILGenerator.Emit(OpCodes.Ldloc, wrappedParam.LocalIndex);
+                var rtc = responseType.GetConstructor(new Type[] { });
+                var setResultMethod = responseType.GetProperties().First(x => x.Name == PROP_NAME_RESULT).GetSetMethod();
+                var setRCMethod = responseType.GetProperties().First(x => x.Name == PROP_NAME_RC).GetSetMethod();
+                var setErrorMethod = responseType.GetProperties().First(x => x.Name == PROP_NAME_ERROR).GetSetMethod();
 
-                    //anyMethodILGenerator.Emit(OpCodes.Stloc, responseStatusParam.LocalIndex);
-                    //anyMethodILGenerator.Emit(OpCodes.Newobj, rtc);
-                    //anyMethodILGenerator.Emit(OpCodes.Stloc, wrappedParam.LocalIndex);
-                    //anyMethodILGenerator.Emit(OpCodes.Ldloc, wrappedParam.LocalIndex);
-                    //anyMethodILGenerator.Emit(OpCodes.Ldloc, responseStatusParam.LocalIndex);
-                    //anyMethodILGenerator.Emit(OpCodes.Call, setResponseMethod);
-                    //anyMethodILGenerator.Emit(OpCodes.Ldloc, wrappedParam.LocalIndex);
+                LocalBuilder paramResult = anyMethodILGenerator.DeclareLocal(hostedMethodInfo.ReturnParameter.ParameterType);
+                LocalBuilder paramException = anyMethodILGenerator.DeclareLocal(typeof(Exception));
+                LocalBuilder paramRC = anyMethodILGenerator.DeclareLocal(responseType.GetProperties().First(x => x.Name == PROP_NAME_RC).GetType());
+                LocalBuilder paramError = anyMethodILGenerator.DeclareLocal(responseType.GetProperties().First(x => x.Name == PROP_NAME_ERROR).GetType());
+                LocalBuilder paramWrapped = anyMethodILGenerator.DeclareLocal(responseType);
 
+                anyMethodILGenerator.Emit(OpCodes.Call, hostedMethodInfo);              //Call the hosted method
+                anyMethodILGenerator.Emit(OpCodes.Stloc, paramResult);                  //Store return value from the method call
 
-                    //krk
-                    //anyMethodILGenerator.Emit(OpCodes.Ldloc_S);
+                anyMethodILGenerator.Emit(OpCodes.Ldc_I4_0);                        
+                anyMethodILGenerator.Emit(OpCodes.Stloc, paramRC);                      //Store 0 in the parmRC local variable
+                anyMethodILGenerator.Emit(OpCodes.Ldstr, "");                       
+                anyMethodILGenerator.Emit(OpCodes.Stloc, paramError);                   //Store value of '' in the errorMessage variable
+                anyMethodILGenerator.Emit(OpCodes.Leave, lblExCatch);
 
-                    //var rcConstructor = responseType.GetConstructor(new Type[] { typeof(Int32) });
-                    //var setResponseMethod = responseType.GetProperties().First(x => x.Name.StartsWith("response")).GetSetMethod();
-                    //var resultResponseParam = anyMethodILGenerator.DeclareLocal(hostedMethodInfo.ReturnParameter.ParameterType);
-                    //var wrappedParam = anyMethodILGenerator.DeclareLocal(responseType);
-                    //anyMethodILGenerator.Emit(OpCodes.Stloc, resultParam.LocalIndex);
-                    //anyMethodILGenerator.Emit(OpCodes.Newobj, rcConstructor);
-                    //anyMethodILGenerator.Emit(OpCodes.Stloc, wrappedParam.LocalIndex);
-                    //anyMethodILGenerator.Emit(OpCodes.Ldloc, wrappedParam.LocalIndex);
-                    //anyMethodILGenerator.Emit(OpCodes.Ldloc, resultParam.LocalIndex);
-                    //anyMethodILGenerator.Emit(OpCodes.Call, setResponseMethod);
-                    //anyMethodILGenerator.Emit(OpCodes.Ldloc, wrappedParam.LocalIndex);
-                    //krk
-                    //var setResponseMethod = responseType.GetProperties().First(x => x.Name.StartsWith("response")).GetSetMethod();
+                //Begin Catch Block
+                anyMethodILGenerator.BeginCatchBlock(typeof(Exception));
+                Type exception = typeof(Exception);
+                MethodInfo exToStrMI = exception.GetMethod("ToString");
 
-                    //anyMethodILGenerator.Emit(OpCodes.Call, setResponseMethod);
-                    //krk end
+                anyMethodILGenerator.Emit(OpCodes.Stloc, paramException); //Store the Exception object in the local Exception variable
+                anyMethodILGenerator.Emit(OpCodes.Ldstr, "Caught {0}");
 
-                    anyMethodILGenerator.Emit(OpCodes.Ldloc, wrappedParam.LocalIndex);
-                }
+                anyMethodILGenerator.Emit(OpCodes.Ldloc_S, paramException);
+                anyMethodILGenerator.EmitCall(OpCodes.Callvirt, exToStrMI, null);
+                anyMethodILGenerator.Emit(OpCodes.Stloc, paramError);
 
-                //krk begin
-                //LocalBuilder responseStatus = anyMethodILGenerator.DeclareLocal(typeof(int));
-                //LocalBuilder thrownException = anyMethodILGenerator.DeclareLocal(typeof(Exception));
+                anyMethodILGenerator.Emit(OpCodes.Ldc_I4_M1);
+                anyMethodILGenerator.Emit(OpCodes.Stloc_S, paramRC);
+                anyMethodILGenerator.EndExceptionBlock();
 
-                //anyMethodILGenerator.Emit(OpCodes.Ldc_I4_8);
-                //anyMethodILGenerator.Emit(OpCodes.Stloc, responseStatus);
+                anyMethodILGenerator.Emit(OpCodes.Newobj, rtc);                     //Create new responseType to hold the return value
 
-                //anyMethodILGenerator.Emit(OpCodes.Leave, lblTry);
-                //anyMethodILGenerator.BeginCatchBlock(typeof(Exception));
-                
-                //// On entry to the catch block, the thrown exception is on the stack. Store it in a local variable.                
-                ////anyMethodILGenerator.Emit(OpCodes.Stloc_S, thrownException);
-                ////anyMethodILGenerator.Emit(OpCodes.Stloc, responseStatus);
+                //Generic Method
+                anyMethodILGenerator.Emit(OpCodes.Stloc, paramWrapped.LocalIndex);
+                anyMethodILGenerator.Emit(OpCodes.Ldloc, paramWrapped.LocalIndex);
+                anyMethodILGenerator.Emit(OpCodes.Ldloc, paramResult.LocalIndex);
+                anyMethodILGenerator.Emit(OpCodes.Call, setResultMethod);
+                anyMethodILGenerator.Emit(OpCodes.Ldloc, paramWrapped.LocalIndex);
 
-                //// This is the end of the try/catch/finally block.
-                //anyMethodILGenerator.Emit(OpCodes.Leave_S, lblTry);
-                //anyMethodILGenerator.EndExceptionBlock();
+                //RC
+                anyMethodILGenerator.Emit(OpCodes.Stloc, paramWrapped.LocalIndex);
+                anyMethodILGenerator.Emit(OpCodes.Ldloc, paramWrapped.LocalIndex);
+                anyMethodILGenerator.Emit(OpCodes.Ldloc, paramRC.LocalIndex);
+                anyMethodILGenerator.Emit(OpCodes.Call, setRCMethod);
+                anyMethodILGenerator.Emit(OpCodes.Ldloc, paramWrapped.LocalIndex);
 
-                //anyMethodILGenerator.Emit(OpCodes.Ldloc, responseStatus);
-                //krk end
-
+                //Error Message
+                anyMethodILGenerator.Emit(OpCodes.Stloc, paramWrapped.LocalIndex);
+                anyMethodILGenerator.Emit(OpCodes.Ldloc, paramWrapped.LocalIndex);
+                anyMethodILGenerator.Emit(OpCodes.Ldloc, paramError.LocalIndex);
+                anyMethodILGenerator.Emit(OpCodes.Call, setErrorMethod);
+                anyMethodILGenerator.Emit(OpCodes.Ldloc, paramWrapped.LocalIndex);
 
                 anyMethodILGenerator.Emit(OpCodes.Ret);
+
                 serviceTypeBuilder.CreateType();
-                
+
                 if (methodsToHost[hostedMethodInfo].RestUriAlias == null)
                 {
                     // No rest routes defined.
@@ -329,196 +305,18 @@ namespace QuickHost
         }
 
         //Discover Golden Begin
-        private static void CreatePropertyFromParameter(TypeBuilder typeBuilder, ParameterInfo parameterInfo)
-        {
-            var parameterName = parameterInfo.Name != null ? parameterInfo.Name : "result";
-            var propertyBuilder =
-                typeBuilder.DefineProperty(
-                    parameterName, PropertyAttributes.HasDefault, parameterInfo.ParameterType, null);
-
-            var fieldBuilder =
-                typeBuilder.DefineField(
-                    "_" + parameterName, parameterInfo.ParameterType, FieldAttributes.Private);
-
-            // Create get method.
-
-            var getMethodBuilder =
-                typeBuilder.DefineMethod(
-                    "get_" + parameterName,
-                    MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig,
-                    parameterInfo.ParameterType,
-                    Type.EmptyTypes);
-
-            var getMethodILGenerator = getMethodBuilder.GetILGenerator();
-
-            getMethodILGenerator.Emit(OpCodes.Ldarg_0);
-            getMethodILGenerator.Emit(OpCodes.Ldfld, fieldBuilder);
-            getMethodILGenerator.Emit(OpCodes.Ret);
-
-            propertyBuilder.SetGetMethod(getMethodBuilder);
-
-            // Create set method
-
-            var setMethodBuilder =
-                typeBuilder.DefineMethod(
-                    "set_" + parameterName,
-                    MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig,
-                    null,
-                    new[] { parameterInfo.ParameterType });
-
-            var setMethodILGenerator = setMethodBuilder.GetILGenerator();
-
-            setMethodILGenerator.MarkLabel(setMethodILGenerator.DefineLabel());
-            setMethodILGenerator.Emit(OpCodes.Ldarg_0);
-            setMethodILGenerator.Emit(OpCodes.Ldarg_1);
-            setMethodILGenerator.Emit(OpCodes.Stfld, fieldBuilder);
-
-            setMethodILGenerator.Emit(OpCodes.Nop);
-            setMethodILGenerator.MarkLabel(setMethodILGenerator.DefineLabel());
-            setMethodILGenerator.Emit(OpCodes.Ret);
-
-            propertyBuilder.SetSetMethod(setMethodBuilder);
-
-            propertyBuilder
-                .SetCustomAttribute(
-                    new CustomAttributeBuilder(
-                        typeof(DataMemberAttribute).GetConstructor(new Type[] { }), new object[] { }));
-        }
-        //Discover Golden End
-
-        //krk - Create Response Property
-        private static void CreateResponseProperty(TypeBuilder typeBuilder)
-        {
-            string responseName = "responseStatus";
-            //Type responseType = typeof(ResponseStatus);
-            Type responseType = typeof(Int32);
-
-            var propertyBuilder = typeBuilder.DefineProperty(responseName, PropertyAttributes.HasDefault, responseType, null);
-            propertyBuilder.SetConstant(99);
-
-            var fieldBuilder =
-                typeBuilder.DefineField(
-                    "_" + responseName, responseType, FieldAttributes.Private);
-
-            // Create get method.
-
-            var getMethodBuilder =
-                typeBuilder.DefineMethod(
-                    "get_" + responseName,
-                    MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig,
-                    responseType,
-                    Type.EmptyTypes);
-
-            var getMethodILGenerator = getMethodBuilder.GetILGenerator();
-
-            getMethodILGenerator.Emit(OpCodes.Ldarg_0);
-            getMethodILGenerator.Emit(OpCodes.Ldfld, fieldBuilder);
-            getMethodILGenerator.Emit(OpCodes.Ret);
-
-            propertyBuilder.SetGetMethod(getMethodBuilder);
-
-            // Create set method
-
-            var setMethodBuilder =
-                typeBuilder.DefineMethod(
-                    "set_" + responseName,
-                    MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig,
-                    null,
-                    new[] { responseType });
-
-            var setMethodILGenerator = setMethodBuilder.GetILGenerator();
-
-            setMethodILGenerator.MarkLabel(setMethodILGenerator.DefineLabel());
-            setMethodILGenerator.Emit(OpCodes.Ldarg_0);
-            setMethodILGenerator.Emit(OpCodes.Ldarg_1);
-            setMethodILGenerator.Emit(OpCodes.Stfld, fieldBuilder);
-
-            setMethodILGenerator.Emit(OpCodes.Nop);
-            setMethodILGenerator.MarkLabel(setMethodILGenerator.DefineLabel());
-            setMethodILGenerator.Emit(OpCodes.Ret);
-
-            propertyBuilder.SetSetMethod(setMethodBuilder);
-
-            propertyBuilder
-                .SetCustomAttribute(
-                    new CustomAttributeBuilder(
-                        typeof(DataMemberAttribute).GetConstructor(new Type[] { }), new object[] { }));
-        }
-
-        //private static void CreateResponsePropertyFromParameter(TypeBuilder typeBuilder, ParameterInfo parameterInfo)
+        //private static void CreatePropertyFromParameter(TypeBuilder typeBuilder, ParameterInfo parameterInfo)
         //{
-        //    var combinedResponseTypeBuilder =
-        //        assemblyModuleBuilder.DefineType(
-        //            assemblyName.Name + "." + methodAlias + "CombinedResponseType",
-        //            someTypeAttributes, null);
-
-        //    Type responseType = CreateResponseType(combinedTypeBuilder, parameterInfo);
-
         //    var parameterName = parameterInfo.Name != null ? parameterInfo.Name : "result";
         //    var propertyBuilder =
         //        typeBuilder.DefineProperty(
-        //            parameterName, PropertyAttributes.HasDefault, responseType, null);
+        //            parameterName, PropertyAttributes.HasDefault, parameterInfo.ParameterType, null);
 
         //    var fieldBuilder =
         //        typeBuilder.DefineField(
-        //            "_" + parameterName, responseType, FieldAttributes.Private);
+        //            "_" + parameterName, parameterInfo.ParameterType, FieldAttributes.Private);
 
         //    // Create get method.
-
-        //    var getMethodBuilder =
-        //        typeBuilder.DefineMethod(
-        //            "get_" + parameterName,
-        //            MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig,
-        //            responseType,
-        //            Type.EmptyTypes);
-
-        //    var getMethodILGenerator = getMethodBuilder.GetILGenerator();
-
-        //    getMethodILGenerator.Emit(OpCodes.Ldarg_0);
-        //    getMethodILGenerator.Emit(OpCodes.Ldfld, fieldBuilder);
-        //    getMethodILGenerator.Emit(OpCodes.Ret);
-
-        //    propertyBuilder.SetGetMethod(getMethodBuilder);
-
-        //    // Create set method
-
-        //    var setMethodBuilder =
-        //        typeBuilder.DefineMethod(
-        //            "set_" + parameterName,
-        //            MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig,
-        //            null,
-        //            new[] { responseType });
-
-        //    var setMethodILGenerator = setMethodBuilder.GetILGenerator();
-
-        //    setMethodILGenerator.MarkLabel(setMethodILGenerator.DefineLabel());
-        //    setMethodILGenerator.Emit(OpCodes.Ldarg_0);
-        //    setMethodILGenerator.Emit(OpCodes.Ldarg_1);
-        //    setMethodILGenerator.Emit(OpCodes.Stfld, fieldBuilder);
-
-        //    setMethodILGenerator.Emit(OpCodes.Nop);
-        //    setMethodILGenerator.MarkLabel(setMethodILGenerator.DefineLabel());
-        //    setMethodILGenerator.Emit(OpCodes.Ret);
-
-        //    propertyBuilder.SetSetMethod(setMethodBuilder);
-
-        //    propertyBuilder
-        //        .SetCustomAttribute(
-        //            new CustomAttributeBuilder(
-        //                typeof(DataMemberAttribute).GetConstructor(new Type[] { }), new object[] { }));
-        //}
-
-        //KRK Begin
-        //private static void CreatePropertyFromParameter(TypeBuilder typeBuilder, ParameterInfo parameterInfo, bool blnAddResponse)
-        //{
-        //    var parameterName = parameterInfo.Name != null ? parameterInfo.Name : "result";
-        //    PropertyBuilder propertyBuilder =
-        //        typeBuilder.DefineProperty(
-        //            parameterName, PropertyAttributes.HasDefault, parameterInfo.ParameterType, null);
-
-        //    FieldBuilder fieldBuilder =
-        //        typeBuilder.DefineField(
-        //            "_" + parameterName, parameterInfo.ParameterType, FieldAttributes.Private);
 
         //    var getMethodBuilder =
         //        typeBuilder.DefineMethod(
@@ -531,16 +329,6 @@ namespace QuickHost
 
         //    getMethodILGenerator.Emit(OpCodes.Ldarg_0);
         //    getMethodILGenerator.Emit(OpCodes.Ldfld, fieldBuilder);
-
-        //    //krk begin
-        //    //if (blnAddResponse)
-        //    //{
-        //    //    PropertyBuilder responsePropertyBuilder = typeBuilder.DefineProperty("responseStatus", PropertyAttributes.HasDefault, typeof(ResponseStatus), null);
-        //    //    FieldBuilder responseFieldBuilder = typeBuilder.DefineField("_responseStatus", typeof(ResponseStatus), FieldAttributes.Private);
-        //    // //   getMethodILGenerator.Emit(OpCodes.Ldfld, responseFieldBuilder);
-        //    //}
-        //    //krk end            
-
         //    getMethodILGenerator.Emit(OpCodes.Ret);
 
         //    propertyBuilder.SetGetMethod(getMethodBuilder);
@@ -572,180 +360,67 @@ namespace QuickHost
         //            new CustomAttributeBuilder(
         //                typeof(DataMemberAttribute).GetConstructor(new Type[] { }), new object[] { }));
         //}
+        //Discover Golden End
 
-        //private static void CreateResponsePropertyFromParameter(TypeBuilder combinedTypeBuilder, TypeBuilder typeBuilder, ParameterInfo parameterInfo)
-        //{
-        //    Type responseType = CreateResponseType(combinedTypeBuilder, parameterInfo);
-
-        //    var parameterName = parameterInfo.Name != null ? parameterInfo.Name : "result";
-        //    var propertyBuilder =
-        //        typeBuilder.DefineProperty(
-        //            parameterName, PropertyAttributes.HasDefault, responseType, null);
-
-        //    var fieldBuilder =
-        //        typeBuilder.DefineField(
-        //            "_" + parameterName, responseType, FieldAttributes.Private);
-
-        //    // Create get method.
-
-        //    var getMethodBuilder =
-        //        typeBuilder.DefineMethod(
-        //            "get_" + parameterName,
-        //            MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig,
-        //            responseType,
-        //            Type.EmptyTypes);
-
-        //    var getMethodILGenerator = getMethodBuilder.GetILGenerator();
-
-        //    getMethodILGenerator.Emit(OpCodes.Ldarg_0);
-        //    getMethodILGenerator.Emit(OpCodes.Ldfld, fieldBuilder);
-        //    getMethodILGenerator.Emit(OpCodes.Ret);
-
-        //    propertyBuilder.SetGetMethod(getMethodBuilder);
-
-        //    // Create set method
-
-        //    var setMethodBuilder =
-        //        typeBuilder.DefineMethod(
-        //            "set_" + parameterName,
-        //            MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig,
-        //            null,
-        //            new[] { responseType });
-
-        //    var setMethodILGenerator = setMethodBuilder.GetILGenerator();
-
-        //    setMethodILGenerator.MarkLabel(setMethodILGenerator.DefineLabel());
-        //    setMethodILGenerator.Emit(OpCodes.Ldarg_0);
-        //    setMethodILGenerator.Emit(OpCodes.Ldarg_1);
-        //    setMethodILGenerator.Emit(OpCodes.Stfld, fieldBuilder);
-
-        //    setMethodILGenerator.Emit(OpCodes.Nop);
-        //    setMethodILGenerator.MarkLabel(setMethodILGenerator.DefineLabel());
-        //    setMethodILGenerator.Emit(OpCodes.Ret);
-
-        //    propertyBuilder.SetSetMethod(setMethodBuilder);
-
-        //    propertyBuilder
-        //        .SetCustomAttribute(
-        //            new CustomAttributeBuilder(
-        //                typeof(DataMemberAttribute).GetConstructor(new Type[] { }), new object[] { }));
-        //}
-
-        //This successfully adds two properties - but the ResponseStatus is not inside of the result
-        //private static Type CreateResponseType(TypeBuilder combinedTypeBuilder, ParameterInfo parameterInfo)
-        //{
-        //     ConstructorBuilder constructor = combinedTypeBuilder.DefineDefaultConstructor(
-        //         MethodAttributes.Public |
-        //         MethodAttributes.SpecialName |
-        //         MethodAttributes.RTSpecialName);
-
-        //    //Add response status to the object
-        //    CreateProperty(combinedTypeBuilder, "responseStatus", typeof(ResponseStatus) );
-
-        //    //Add original properties to the object
-        //    var parameterName = parameterInfo.Name != null ? parameterInfo.Name : "result";
-        //    CreateProperty(combinedTypeBuilder, parameterName, parameterInfo.ParameterType);
-
-        //    // make the type
-        //    Type t = combinedTypeBuilder.CreateType();
-
-        //    return t;
-        //}
-
-        //private static Type CreateResponseType(TypeBuilder combinedTypeBuilder, ParameterInfo parameterInfo)
-        //{
-        //    ConstructorBuilder constructor = combinedTypeBuilder.DefineDefaultConstructor(
-        //        MethodAttributes.Public |
-        //        MethodAttributes.SpecialName |
-        //        MethodAttributes.RTSpecialName);
-
-        //    //Add response status to the object
-        //    var parameterName = parameterInfo.Name != null ? parameterInfo.Name : "result";
-        //    CreatePropertyWithResponse(combinedTypeBuilder, parameterName, parameterInfo.ParameterType);
-
-        //    //Add original properties to the object
-        //    //var parameterName = parameterInfo.Name != null ? parameterInfo.Name : "result";
-        //    //CreateProperty(combinedTypeBuilder, parameterName, parameterInfo.ParameterType);
-
-        //    // make the type
-        //    Type t = combinedTypeBuilder.CreateType();
-
-        //    return t;
-        //}
-
-        private static void CreateProperty(TypeBuilder tb, string propertyName, Type propertyType)
+        private static void CreatePropertyFromParameter(TypeBuilder typeBuilder, ParameterInfo parameterInfo)
         {
-            FieldBuilder fieldBuilder = tb.DefineField("_" + propertyName, propertyType, FieldAttributes.Private);
-
-            PropertyBuilder propertyBuilder = tb.DefineProperty(propertyName, PropertyAttributes.HasDefault, propertyType, null);
-            MethodBuilder getPropMthdBldr = tb.DefineMethod("get_" + propertyName, MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig, propertyType, Type.EmptyTypes);
-            ILGenerator getIl = getPropMthdBldr.GetILGenerator();
-
-            getIl.Emit(OpCodes.Ldarg_0);
-            getIl.Emit(OpCodes.Ldfld, fieldBuilder);
-            getIl.Emit(OpCodes.Ret);
-
-            MethodBuilder setPropMthdBldr =
-                tb.DefineMethod("set_" + propertyName,
-                  MethodAttributes.Public |
-                  MethodAttributes.SpecialName |
-                  MethodAttributes.HideBySig,
-                  null, new[] { propertyType });
-
-            ILGenerator setIl = setPropMthdBldr.GetILGenerator();
-            Label modifyProperty = setIl.DefineLabel();
-            Label exitSet = setIl.DefineLabel();
-
-            setIl.MarkLabel(modifyProperty);
-            setIl.Emit(OpCodes.Ldarg_0);
-            setIl.Emit(OpCodes.Ldarg_1);
-            setIl.Emit(OpCodes.Stfld, fieldBuilder);
-
-            setIl.Emit(OpCodes.Nop);
-            setIl.MarkLabel(exitSet);
-            setIl.Emit(OpCodes.Ret);
-
-            propertyBuilder.SetGetMethod(getPropMthdBldr);
-            propertyBuilder.SetSetMethod(setPropMthdBldr);
+            string propertyName = parameterInfo.Name != null ? parameterInfo.Name : PROP_NAME_RESULT;
+            CreateProperty(typeBuilder, propertyName, parameterInfo.ParameterType);
         }
 
-        //private static void CreatePropertyWithResponse(TypeBuilder tb, string propertyName, Type propertyType)
-        //{
-        //    FieldBuilder fieldBuilder = tb.DefineField("_" + propertyName, propertyType, FieldAttributes.Private);
-        //    FieldBuilder responseFieldBuilder = tb.DefineField("_ResponseType", typeof(ResponseStatus), FieldAttributes.Private);
+        private static void CreateProperty(TypeBuilder typeBuilder, string propertyName, Type propertyType)
+        {
+            var propertyBuilder =
+                typeBuilder.DefineProperty(
+                    propertyName, PropertyAttributes.HasDefault, propertyType, null);
 
-        //    PropertyBuilder propertyBuilder = tb.DefineProperty(propertyName, PropertyAttributes.HasDefault, propertyType, null);
-        //    MethodBuilder getPropMthdBldr = tb.DefineMethod("get_" + propertyName, MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig, propertyType, Type.EmptyTypes);
-        //    ILGenerator getIl = getPropMthdBldr.GetILGenerator();
+            var fieldBuilder =
+                typeBuilder.DefineField(
+                    "_" + propertyName, propertyType, FieldAttributes.Private);
 
-        //    getIl.Emit(OpCodes.Ldarg_0);
-        //    getIl.Emit(OpCodes.Ldfld, responseFieldBuilder);
-        //    getIl.Emit(OpCodes.Ldfld, fieldBuilder);
-        //    getIl.Emit(OpCodes.Ret);
+            // Create get method.
 
-        //    MethodBuilder setPropMthdBldr =
-        //        tb.DefineMethod("set_" + propertyName,
-        //          MethodAttributes.Public |
-        //          MethodAttributes.SpecialName |
-        //          MethodAttributes.HideBySig,
-        //          null, new[] { propertyType });
+            var getMethodBuilder =
+                typeBuilder.DefineMethod(
+                    "get_" + propertyName,
+                    MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig,
+                    propertyType,
+                    Type.EmptyTypes);
 
-        //    ILGenerator setIl = setPropMthdBldr.GetILGenerator();
-        //    Label modifyProperty = setIl.DefineLabel();
-        //    Label exitSet = setIl.DefineLabel();
+            var getMethodILGenerator = getMethodBuilder.GetILGenerator();
 
-        //    setIl.MarkLabel(modifyProperty);
-        //    setIl.Emit(OpCodes.Ldarg_0);
-        //    setIl.Emit(OpCodes.Ldarg_1);
-        //    setIl.Emit(OpCodes.Stfld, fieldBuilder);
+            getMethodILGenerator.Emit(OpCodes.Ldarg_0);
+            getMethodILGenerator.Emit(OpCodes.Ldfld, fieldBuilder);
+            getMethodILGenerator.Emit(OpCodes.Ret);
 
-        //    setIl.Emit(OpCodes.Nop);
-        //    setIl.MarkLabel(exitSet);
-        //    setIl.Emit(OpCodes.Ret);
+            propertyBuilder.SetGetMethod(getMethodBuilder);
 
-        //    propertyBuilder.SetGetMethod(getPropMthdBldr);
-        //    propertyBuilder.SetSetMethod(setPropMthdBldr);
-        //}
-        //KRK End
+            // Create set method
+
+            var setMethodBuilder =
+                typeBuilder.DefineMethod(
+                    "set_" + propertyName,
+                    MethodAttributes.Public | MethodAttributes.SpecialName | MethodAttributes.HideBySig,
+                    null,
+                    new[] { propertyType });
+
+            var setMethodILGenerator = setMethodBuilder.GetILGenerator();
+
+            setMethodILGenerator.MarkLabel(setMethodILGenerator.DefineLabel());
+            setMethodILGenerator.Emit(OpCodes.Ldarg_0);
+            setMethodILGenerator.Emit(OpCodes.Ldarg_1);
+            setMethodILGenerator.Emit(OpCodes.Stfld, fieldBuilder);
+
+            setMethodILGenerator.Emit(OpCodes.Nop);
+            setMethodILGenerator.MarkLabel(setMethodILGenerator.DefineLabel());
+            setMethodILGenerator.Emit(OpCodes.Ret);
+
+            propertyBuilder.SetSetMethod(setMethodBuilder);
+
+            propertyBuilder
+                .SetCustomAttribute(
+                    new CustomAttributeBuilder(
+                        typeof(DataMemberAttribute).GetConstructor(new Type[] { }), new object[] { }));
+        }
     }    
 }
