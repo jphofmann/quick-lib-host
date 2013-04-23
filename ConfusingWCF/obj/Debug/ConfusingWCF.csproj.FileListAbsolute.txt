@@ -1,1 +1,0 @@
-C:\Revelle Enterprises Development\tool-interface-host\ConfusingWCF\obj\Debug\ResolveAssemblyReference.cache
