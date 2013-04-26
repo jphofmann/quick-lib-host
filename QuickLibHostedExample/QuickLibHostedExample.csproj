@@ -49,14 +49,11 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="App.config" />
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\..\lib-mothership\mothership.csproj">
       <Project>{3d9e9a10-e710-40ab-b26a-03cd8cbba99d}</Project>
       <Name>mothership</Name>
     </ProjectReference>
-    <ProjectReference Include="..\QuickHost.csproj">
+    <ProjectReference Include="..\QuickLibHost.csproj">
       <Project>{99c3d422-8fbf-4ce3-81ee-cdf1266b53fa}</Project>
       <Name>QuickHost</Name>
     </ProjectReference>

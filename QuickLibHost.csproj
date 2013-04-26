@@ -73,10 +73,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="QuickHostableAttribute.cs" />
-    <Compile Include="QuickHostableAssemblyLoader.cs" />
-    <Compile Include="QuickHostableClassMappings.cs" />
-    <Compile Include="QuickHostMethodAttribute.cs" />
+    <Compile Include="QuickLibHostableAssemblyLoader.cs" />
+    <Compile Include="QuickLibHostableAttribute.cs" />
+    <Compile Include="QuickLibHostableClassMappings.cs" />
+    <Compile Include="QuickLibHostMethodAttribute.cs" />
     <Compile Include="ServiceStackHost.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
@@ -87,9 +87,6 @@
     </Compile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="app.config">
-      <SubType>Designer</SubType>
-    </None>
     <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
