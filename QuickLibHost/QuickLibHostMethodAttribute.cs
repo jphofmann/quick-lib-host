@@ -1,16 +1,16 @@
 ﻿using System;
 
-namespace QuickHost
+namespace QuickLibHost
 {
-    public class QuickHostMethodAttribute : Attribute
+    public class QuickLibHostMethodAttribute : Attribute
     {
-        public QuickHostMethodAttribute(string methodAlias, string restUriAlias)
+        public QuickLibHostMethodAttribute(string methodAlias, string restUriAlias)
         {
             MethodAlias = methodAlias;
             RestUriAlias = restUriAlias;
         }
 
-        public QuickHostMethodAttribute(string methodAlias)
+        public QuickLibHostMethodAttribute(string methodAlias)
             : this(methodAlias, methodAlias)
         { }
 

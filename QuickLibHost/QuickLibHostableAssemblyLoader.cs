@@ -3,20 +3,20 @@ using System.Reflection;
 using System.IO;
 using System.Security;
 
-namespace QuickHost
+namespace QuickLibHost
 {
-    class QuickHostableAssemblyLoader
+    class QuickLibHostableAssemblyLoader
     {
-        public static void Load(string assemblyPath, out object quickHostableClass, out string serviceName)
+        public static void Load(string assemblyPath, out object quickLibHostableClass, out string serviceName)
         {
-            quickHostableClass = null;
+            quickLibHostableClass = null;
             serviceName = null;
             
-            Assembly quickHostableAssembly;
+            Assembly quickLibHostableAssembly;
             
             try
             {
-                quickHostableAssembly = Assembly.LoadFrom(assemblyPath);
+                quickLibHostableAssembly = Assembly.LoadFrom(assemblyPath);
 
                 AppDomain.CurrentDomain.AssemblyResolve +=
                     (sender, args) =>
@@ -35,40 +35,40 @@ namespace QuickHost
                 throw new Exception(String.Format("Could not load {0} for hosting.", assemblyPath), e);
             }
 
-            Type quickHostableType = null;
+            Type quickLibHostableType = null;
 
-            foreach (var assemblyType in quickHostableAssembly.GetTypes())
+            foreach (var assemblyType in quickLibHostableAssembly.GetTypes())
             {
-                var attributes = assemblyType.GetCustomAttributes(typeof (QuickHostableAttribute), true);
+                var attributes = assemblyType.GetCustomAttributes(typeof (QuickLibHostableAttribute), true);
                 
                 if (attributes.Length == 0) 
                     continue;
 
-                serviceName = ((QuickHostableAttribute) attributes[0]).ServiceName;
-                quickHostableType = assemblyType;
+                serviceName = ((QuickLibHostableAttribute) attributes[0]).ServiceName;
+                quickLibHostableType = assemblyType;
                 break;
             }
 
-            if (quickHostableType == null)
+            if (quickLibHostableType == null)
             {
                 throw new Exception(
                     String.Format(
-                        "Load of {0} failed. No class with QuickHostable attribute found.",
+                        "Load of {0} failed. No class with QuickLibHostable attribute found.",
                         assemblyPath));
             }
 
-            var constructorInfo = quickHostableType.GetConstructor(new Type[] {});
+            var constructorInfo = quickLibHostableType.GetConstructor(new Type[] {});
 
             if (constructorInfo != null)
             {
-                quickHostableClass = constructorInfo.Invoke(null);
+                quickLibHostableClass = constructorInfo.Invoke(null);
             }
             else
             {
                 throw new Exception(
                     String.Format(
                         "Load of {0} from {1} failed. No suitable constructor found.",
-                        quickHostableType.Name,
+                        quickLibHostableType.Name,
                         assemblyPath));
             }
         }

@@ -8,8 +8,8 @@
     <ProjectGuid>{99C3D422-8FBF-4CE3-81EE-CDF1266B53FA}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>QuickHost</RootNamespace>
-    <AssemblyName>QuickHost</AssemblyName>
+    <RootNamespace>QuickLibHost</RootNamespace>
+    <AssemblyName>QuickLibHost</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <TargetFrameworkProfile>
     </TargetFrameworkProfile>

@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Reflection;
 
-namespace QuickHost
+namespace QuickLibHost
 {
     // Because ServiceStack uses the .NET Web Hosting code on windows, 
     // this may require a netsh http add urlacl url=http://+:8080/my_dll/ user=\Everyone by an Administrator
@@ -12,19 +12,19 @@ namespace QuickHost
         {
             if (args.Count() != 2)
             {
-                Console.WriteLine("QuickHost: argument error. Format is <assembly_path> <hosting_url>");
+                Console.WriteLine("QuickLibHost: argument error. Format is <assembly_path> <hosting_url>");
                 Console.WriteLine("<assembly_path> can be a relative or absolute path.");
                 Console.WriteLine("<hosting_url> is a MS hosting style url. (ie: http://+:88/my_dll/)");
                 Console.ReadLine();
                 Environment.Exit(1);
             }
 
-            object quickHostableClass = null;
+            object quickLibHostableClass = null;
             string serviceName = null;
 
             try
             {
-                QuickHostableAssemblyLoader.Load(args[0], out quickHostableClass, out serviceName);
+                QuickLibHostableAssemblyLoader.Load(args[0], out quickLibHostableClass, out serviceName);
             }
             catch (Exception e)
             {
@@ -37,7 +37,7 @@ namespace QuickHost
 
             try
             {
-                serviceStackHost = ServiceStackHost.CreateFrom(serviceName, quickHostableClass);
+                serviceStackHost = ServiceStackHost.CreateFrom(serviceName, quickLibHostableClass);
             }
             catch (Exception e)
             {

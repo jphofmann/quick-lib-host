@@ -1,23 +1,23 @@
 ﻿using System;
 using System.Runtime.Serialization;
-using QuickHost;
+using QuickLibHost;
 using OldQuick;
 using OldQuick.DB;
 using OldQuick.ItemIdentification.Book;
 
-namespace QuickHostedExample
+namespace QuickLibHostedExample
 {
-    [QuickHostable("ExampleHost")]
+    [QuickLibHostable("ExampleHost")]
     public class ExampleHost
     {
 
-        [QuickHostMethod("StandardBearPoke")]
+        [QuickLibHostMethod("StandardBearPoke")]
         public PokeTheExampleBearResult PokeTheExampleBear(int duration)
         {
             return PokeTheExampleBear(new PokeAttributes {Duration = duration, Strength = 5});
         }
 
-        [QuickHostMethod("PokeTheExampleBear", "ExampleBearPoke")]
+        [QuickLibHostMethod("PokeTheExampleBear", "ExampleBearPoke")]
         public PokeTheExampleBearResult PokeTheExampleBear(PokeAttributes pokeAttributes)
         {
             return 
@@ -29,7 +29,7 @@ namespace QuickHostedExample
                             new String(pokeAttributes.Strength > 5 ? 'O' : 'o', pokeAttributes.Duration))};
         }
 
-        [QuickHostMethod("LookupAddress")]   
+        [QuickLibHostMethod("LookupAddress")]   
         public clsAddress LookupAddress(int id)
         {
             return clsAddress.LoadFromCache(id);

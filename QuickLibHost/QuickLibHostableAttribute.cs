@@ -1,10 +1,10 @@
 ﻿using System;
 
-namespace QuickHost
+namespace QuickLibHost
 {
-    public class QuickHostableAttribute : Attribute
+    public class QuickLibHostableAttribute : Attribute
     {
-        public QuickHostableAttribute(string serviceName)
+        public QuickLibHostableAttribute(string serviceName)
         {
             ServiceName = serviceName;
         }

@@ -7,7 +7,7 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.Serialization;
 
-namespace QuickHost
+namespace QuickLibHost
 {
     public class ServiceStackHost : AppHostHttpListenerBase
     {
@@ -21,18 +21,18 @@ namespace QuickHost
         private 
             ServiceStackHost(
                 string name, List<Assembly> assembliesWithServices, Dictionary<string, Type> restRouteMap) 
-            : base("QuickHost: " + name, assembliesWithServices.ToArray())
+            : base("QuickLibHost: " + name, assembliesWithServices.ToArray())
         {
             _restRouteMap = restRouteMap;
         }
 
-        public static ServiceStackHost CreateFrom(string serviceName, object quickHostableClass)
+        public static ServiceStackHost CreateFrom(string serviceName, object QuickLibHostableClass)
         {
             Dictionary<string, Type> restRouteMap;
             List<Assembly> assembliesWithServices;
 
             GenerateServiceInterfaceAssemblies(
-                serviceName, quickHostableClass, out assembliesWithServices, out restRouteMap);
+                serviceName, QuickLibHostableClass, out assembliesWithServices, out restRouteMap);
 
             return new ServiceStackHost(serviceName, assembliesWithServices, restRouteMap);   
         }
@@ -41,8 +41,8 @@ namespace QuickHost
         {
             SetConfig( 
                 new EndpointHostConfig {
-                    WsdlSoapActionNamespace = "http://api.quickhost.org/data",
-                    WsdlServiceNamespace = "http://api.quickhost.org/data",
+                    WsdlSoapActionNamespace = "http://api.quicklibhost.org/data",
+                    WsdlServiceNamespace = "http://api.quicklibhost.org/data",
                     LogFactory = new DebugLogFactory()});
 
             foreach (var route in _restRouteMap.Keys)
@@ -55,22 +55,22 @@ namespace QuickHost
         private static void 
             GenerateServiceInterfaceAssemblies(
                 string serviceName, 
-                object quickHostableClass, 
+                object quickLibHostableClass, 
                 out List<Assembly> assembliesWithServices, 
                 out Dictionary<string, Type> restRouteMap)
         {
             assembliesWithServices = new List<Assembly>();
             restRouteMap = new Dictionary<string, Type>();
 
-            QuickHostableClassMappings.AddHostedClass(serviceName, quickHostableClass);
+            QuickLibHostableClassMappings.AddHostedClass(serviceName, quickLibHostableClass);
 
-            var methodsToHost = new Dictionary<MethodInfo, QuickHostMethodAttribute>();
+            var methodsToHost = new Dictionary<MethodInfo, QuickLibHostMethodAttribute>();
 
-            foreach (var methodInfo in quickHostableClass.GetType().GetMethods())
+            foreach (var methodInfo in quickLibHostableClass.GetType().GetMethods())
             {
-                foreach (var attr in methodInfo.GetCustomAttributes(typeof(QuickHostMethodAttribute), true))
+                foreach (var attr in methodInfo.GetCustomAttributes(typeof(QuickLibHostMethodAttribute), true))
                 {
-                    methodsToHost.Add(methodInfo, (QuickHostMethodAttribute)attr);
+                    methodsToHost.Add(methodInfo, (QuickLibHostMethodAttribute)attr);
                     break;
                 }
             }
@@ -92,7 +92,7 @@ namespace QuickHost
                         typeof(DataContractAttribute).GetConstructor(new Type[] { }),
                         new object[] { },
                         new[] { typeof(DataContractAttribute).GetProperty("Namespace") },
-                        new object[] { "http://api.quickhost.org/data" });
+                        new object[] { "http://api.quicklibhost.org/data" });
             
             const TypeAttributes someTypeAttributes =
                 TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.AutoClass |
@@ -111,10 +111,10 @@ namespace QuickHost
             
             assemblyBuilder
                 .DefineVersionInfoResource(
-                    String.Format("{0} by QuickHost Dynamic Service Generator", serviceName), 
+                    String.Format("{0} by QuickLibHost Dynamic Service Generator", serviceName), 
                     "1.0.0.0", 
-                    "Quick Host Group", 
-                    "(c) 2013 Quick Host Group", 
+                    "QuickLibHost Group", 
+                    "(c) 2013 QuickLibHost Group", 
                     null);
 
             assemblyBuilder.SetCustomAttribute(assemblyVersionAttribute);
@@ -199,7 +199,7 @@ namespace QuickHost
                 anyMethodILGenerator.Emit(OpCodes.Ldstr, serviceName);
 
                 anyMethodILGenerator
-                    .Emit(OpCodes.Call, typeof(QuickHostableClassMappings).GetMethod("GetHostedClass"));
+                    .Emit(OpCodes.Call, typeof(QuickLibHostableClassMappings).GetMethod("GetHostedClass"));
 
                 foreach (var localBuilder in anyMethodParameterLocalBuilders)
                     anyMethodILGenerator.Emit(OpCodes.Ldloc, localBuilder.LocalIndex);

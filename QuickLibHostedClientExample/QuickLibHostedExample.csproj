@@ -7,8 +7,8 @@
     <ProjectGuid>{F5D0D2B2-94D0-41B7-915F-82A5446CB634}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>QuickHostedExample</RootNamespace>
-    <AssemblyName>QuickHostedExample</AssemblyName>
+    <RootNamespace>QuickLibHostedExample</RootNamespace>
+    <AssemblyName>QuickLibHostedExample</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>

@@ -1,14 +1,14 @@
 ﻿using System.Collections.Generic;
 
-namespace QuickHost
+namespace QuickLibHost
 {
-    public class QuickHostableClassMappings
+    public class QuickLibHostableClassMappings
     {
         private static readonly Dictionary<string, object> Map = new Dictionary<string, object>();
 
-        public static void AddHostedClass(string key, object quickHostableClass)
+        public static void AddHostedClass(string key, object quickLibHostableClass)
         {
-            Map.Add(key, quickHostableClass);
+            Map.Add(key, quickLibHostableClass);
         }
 
         public static object GetHostedClass(string key)
