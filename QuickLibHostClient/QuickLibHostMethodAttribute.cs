@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace QuickLibHost
+namespace QuickLibHostClient
 {
     public class QuickLibHostMethodAttribute : Attribute
     {

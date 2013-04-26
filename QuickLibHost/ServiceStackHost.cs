@@ -1,4 +1,5 @@
-﻿using ServiceStack.Logging.Support.Logging;
+﻿using QuickLibHostClient;
+using ServiceStack.Logging.Support.Logging;
 using ServiceStack.WebHost.Endpoints;
 using System;
 using System.Collections.Generic;

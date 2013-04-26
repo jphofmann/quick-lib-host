@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Runtime.Serialization;
-using QuickLibHost;
+using QuickLibHostClient;
 using OldQuick;
 using OldQuick.DB;
 using OldQuick.ItemIdentification.Book;
