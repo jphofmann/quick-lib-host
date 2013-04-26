@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuickLibHost", "QuickLibHost.csproj", "{99C3D422-8FBF-4CE3-81EE-CDF1266B53FA}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuickLibHost", "QuickLibHost\QuickLibHost.csproj", "{99C3D422-8FBF-4CE3-81EE-CDF1266B53FA}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QuickLibHostedExample", "QuickLibHostedExample\QuickLibHostedExample.csproj", "{F5D0D2B2-94D0-41B7-915F-82A5446CB634}"
 EndProject
